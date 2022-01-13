@@ -38,7 +38,7 @@ void setup()
   Serial.begin(115200);
   Serial.println();
 
-  mySerial.begin(9600);
+  mySerial.begin(115200);
 
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -94,6 +94,8 @@ void loop()
     for (int k = 0; k < 4; k++){
       charArrToInt(strtok_r(NULL, " ", &j), &(details -> values[k + 1]));
     }
+    Serial.println();
+    Serial.println(details -> values[0]);
   }
   
   delay(1000);

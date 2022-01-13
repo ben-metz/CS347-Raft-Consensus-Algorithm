@@ -15,6 +15,8 @@ char* replyPacket; // For reply
 
 DETAILS* details;
 
+char* data_buffer;
+
 // For UART
 SoftwareSerial mySerial(13, 15);
 SoftwareSerial detailsSerial(12, 14);
@@ -24,7 +26,9 @@ void setup()
   Serial.begin(115200);
   Serial.println();
 
-  mySerial.begin(9600);
+  data_buffer = (char*) malloc(sizeof(char) * 500);
+
+  mySerial.begin(115200);
   detailsSerial.begin(115200);
 
   // Connect to WiFi
@@ -75,19 +79,36 @@ void loop()
       details->values[0], details->values[1], details->values[2], details->values[3], details->values[4]);
     
     // send back a reply, to the IP address and port we got the packet from
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    
-    Udp.write(replyPacket);
+//    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+//    
+//    Udp.write(replyPacket);
+//    
+//    Udp.endPacket();
+
     mySerial.write(replyPacket);
-    
-    Udp.endPacket();
   }
 
   if (detailsSerial.available()){
-    while(detailsSerial.available()){
-      Serial.write(detailsSerial.read());
+    int i = 0;
+    while (detailsSerial.available() && i < 1000){
+      data_buffer[i] = detailsSerial.read();
+      Serial.write(data_buffer[i]);
+      i++;
     }
     Serial.println();
+    data_buffer[i] = 0;
+
+    Serial.print("Trying to send packet to ");
+    Serial.print(Udp.remoteIP());
+    Serial.print(' ');
+    Serial.print(Udp.remotePort());
+    Serial.println();
+
+    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+    
+    Udp.write(data_buffer);
+    
+    Udp.endPacket();
   }
 }
 
