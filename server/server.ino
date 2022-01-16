@@ -52,6 +52,8 @@ void setup()
 
   details = (DETAILS*) malloc(sizeof(DETAILS));
   details -> id = 0;
+  details -> term = 1;
+  details -> voted_for = -1;
   details -> state = 0;
 
   for (int i = 0; i < 5; i++){
@@ -98,8 +100,8 @@ void loop()
     Serial.println(details -> values[0]);
   }
   
-  delay(1000);
   sendStats();
+  delay(250);
 }
 
 // Converts passed char array to int and stores in place

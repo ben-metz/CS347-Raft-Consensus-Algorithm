@@ -44,6 +44,8 @@ void setup()
 
   details = (DETAILS*) malloc(sizeof(DETAILS));
   details -> id = 2;
+  details -> voted_for = -1;
+  details -> term = 4;
   details -> state = 1;
 
   for (int i = 0; i < 5; i++){
@@ -68,6 +70,6 @@ void setup()
 
 void loop()
 {
-  delay(1000);
+  delay(250);
   sendStats();
 }

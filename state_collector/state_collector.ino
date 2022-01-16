@@ -24,6 +24,10 @@ void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
   detailsSerial.print(':');
   detailsSerial.print(incomingDetails -> state);
   detailsSerial.print(':');
+  detailsSerial.print(incomingDetails -> term);
+  detailsSerial.print(':');
+  detailsSerial.print(incomingDetails -> voted_for);
+  detailsSerial.print(':');
 
   for (int i = 0; i < 5; i++){
     detailsSerial.print(incomingDetails -> values[i]);
