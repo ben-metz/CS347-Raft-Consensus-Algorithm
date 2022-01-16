@@ -13,5 +13,7 @@ uint8_t broadcastAddressSTAT[] = {0xC4, 0x5B, 0xBE, 0x62, 0xC3, 0x73};
 typedef struct struct_message {
     int id;
     int state;
+    int term;
+    int voted_for;
     int values[VALUES];
 } DETAILS;
