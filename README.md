@@ -9,7 +9,7 @@ https://raft.github.io/raft.pdf
 
 ## Interface
 
-<img src="https://user-images.githubusercontent.com/47477832/149642992-b6e96390-c223-40e6-92c6-8065de106e72.png" width="400">
+<img src="https://user-images.githubusercontent.com/47477832/149642992-b6e96390-c223-40e6-92c6-8065de106e72.png" width="600">
 
 - Added a thread that only collects packets sent from the data collector node.
 - UI allows the issue of commands to modify the database on the server node, clients unaffected at the moment as the algorithm needs to be implemented.
