@@ -4,6 +4,9 @@ CS347 Coursework - Implementation of the Raft Consensus Algorithm
 ## Research Paper
 https://raft.github.io/raft.pdf
 
+## Other Papers
+https://lamport.azurewebsites.net/pubs/paxos-simple.pdf
+
 ## Useful Visualisation
 http://thesecretlivesofdata.com/raft/
 
