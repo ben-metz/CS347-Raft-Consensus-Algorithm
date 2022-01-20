@@ -13,7 +13,7 @@ General, useful reference - https://raft.github.io/
 ## Outline
 
 ### Layout
-<img src="https://user-images.githubusercontent.com/47477832/150409004-ed899cb6-b2e7-4176-9722-c7395255eda1.png" width="400">
+<img src="https://user-images.githubusercontent.com/47477832/150436308-ec163d4b-426a-496b-80c3-26c027c4229e.png" width="400">
 
 ### Raft Library (C++)
 - Takes in messages from other instances of the libraries and responds appropriately according to the algorithm
