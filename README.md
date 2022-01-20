@@ -7,7 +7,28 @@ CS347 Coursework - Implementation of the Raft Consensus Algorithm
 **Paxos Made Simple** https://lamport.azurewebsites.net/pubs/paxos-simple.pdf
 
 ## Useful Visualisation
-http://thesecretlivesofdata.com/raft/
+Interactive, good intro - http://thesecretlivesofdata.com/raft/
+General, useful reference - https://raft.github.io/
+
+## Outline
+
+### Layout
+<img src="https://user-images.githubusercontent.com/47477832/150409004-ed899cb6-b2e7-4176-9722-c7395255eda1.png" width="400">
+
+### Raft Library (C++)
+- Takes in messages from other instances of the libraries and responds appropriately according to the algorithm
+- Also interfaces with the data library, so messages should be directly forwarded into the data library
+
+### Data Library (C++)
+- Receives modifications from the raft library and acts upon these messages
+- Probably going to be a list of numbers that is updated (as it is simple), but can always be extended to more complicated data
+
+### Example
+- User inputs a change into the client
+- The client sends the data modification to the elected leader
+- The elected leader uses the raft library to compose messages to send to other servers (could be a list with a message for each neighbouring server), this is returned
+- The returned messages are then sent, this is external to the library as it is implementation specific
+- When a server receives the message into its raft library, it extracts the modification message (if present) and forwards this to the data library to process the change, e.g. if ‘set 1 to 34’ is received, index 1 is set to 34 (just an example probably going to be different).
 
 ## Notes
 - A node can be in 1 of 3 states: Follower, Candidate, Leader
