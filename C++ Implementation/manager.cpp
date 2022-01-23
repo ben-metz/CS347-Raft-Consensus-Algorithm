@@ -1,87 +1,58 @@
-// thread example
-#include <iostream>       // std::cout
-#include <thread>         // std::thread
-#include <stdio.h>
-#include <stdlib.h>
+#include "manager.h"
 #include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sstream>
-#include <mutex>
 
-#include "server.h"
-
-#define IP          "127.0.0.1" // Loopback
-#define PORT        12345
-#define MAXLINE     1024 // Socket buffer size
-
-// Socket details
-int sockfd;
-char buffer[MAXLINE];
-struct sockaddr_in     servaddr;
-
-// Worker threads (servers)
-Server* servers;
-
-std::mutex buffer_mutex;
-
-// Sends a message back to the client
-void send_msg(std::string msg) 
-{
-    sendto(sockfd, (const char *)msg.c_str(), strlen(msg.c_str()),
-        MSG_CONFIRM, (const struct sockaddr *) &servaddr, 
-            sizeof(servaddr));
-    printf("Hello message sent.\n");
+Manager::Manager(){
+    this -> buffer = (char*) malloc(sizeof(char) * MAXLINE);
+    this -> init_socket();
+    this -> init_servers();
 }
 
-// Function executed by the thread
-void thread_server(){
-    std::ostringstream ss;
-    ss << std::this_thread::get_id();
-    std::string idstr = ss.str();
-    std::string hello = "Hello from thread with ID: ";
-    send_msg(hello + idstr);
-}
+void Manager::init_socket(){
+    this -> sockfd = (int*) malloc(sizeof(int));
 
-// Initialises the socket used to communicate with the python client
-void init_socket(){
     // Creating socket file descriptor
-    if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+    if ( (*(this -> sockfd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
         perror("socket creation failed");
         exit(EXIT_FAILURE);
     }
-   
-    memset(&servaddr, 0, sizeof(servaddr));
+
+    this -> servaddr = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
        
     // Filling server information
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(PORT);
-    servaddr.sin_addr.s_addr = INADDR_ANY;
+    this -> servaddr -> sin_family = AF_INET;
+    this -> servaddr -> sin_port = htons(PORT);
+    this -> servaddr -> sin_addr.s_addr = INADDR_ANY;
 }
- 
-int main() 
-{
-  init_socket();
 
-  servers = (Server*) malloc(sizeof(Server) * 5);
+void Manager::init_servers(){
+    this -> servers = (Server*) malloc(sizeof(Server) * SERVER_COUNT);
+
+    unsigned int microsecond = 10000;
+    usleep(3 * microsecond);
   
-  // Initialise the server threads
-  for(int i = 0; i < 5; i++){
-      servers[i] = Server(i, &buffer_mutex); 
-  }
+    // Initialise the server threads
+    for(int i = 0; i < SERVER_COUNT; i++){
+        usleep(3 * microsecond);
+        this -> servers[i] = Server(i, this -> sockfd, this -> servaddr); 
+    }
+}
 
-  for(int i = 0; i < 5; i++){
-      servers[i].join();
-  }
+void Manager::finish(){
+    for(int i = 0; i < SERVER_COUNT; i++){
+        this -> servers[i].join();
+    }
 
-  free(servers);
+    close(*(this -> sockfd));
 
-  std::cout << "foo and bar completed.\n";
+    free(this -> sockfd);
+    free(this -> buffer);
+    free(this -> servaddr);
+}
 
-  close(sockfd);
-
-  return 0;
+// Sends a message back to the client
+void Manager::send_msg(std::string msg) 
+{
+    sendto(*(this -> sockfd), (const char *)msg.c_str(), strlen(msg.c_str()),
+        MSG_CONFIRM, (const struct sockaddr *) this -> servaddr, 
+            sizeof(*(this -> servaddr)));
 }

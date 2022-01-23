@@ -16,14 +16,16 @@
 
 class Server {
     private:
-        std::thread thread;
-        Database database;
+        std::thread* thread;
+        Database *database;
         int id;
         void server_function();
-        std::mutex *lock;
+        int* sockfd;
+        struct sockaddr_in* msg_socket;
 
     public:
-        Server(int id, std::mutex *lock);
+        Server(int id, int* sockfd, struct sockaddr_in* socket_address);
         int getID();
         void join();
+        void send_to_client(std::string msg);
 };

@@ -4,7 +4,7 @@
 
 class Database {
   private:
-    int data[ARR_SIZE];
+    int *data;
     int size = ARR_SIZE;
     void validate_index(int index);
 

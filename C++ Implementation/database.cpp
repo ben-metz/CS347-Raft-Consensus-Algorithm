@@ -1,6 +1,15 @@
 #include "database.h"
+#include <algorithm>
+#include <iostream>
 
-Database::Database(){}
+Database::Database(){
+  this -> data = (int*) malloc(sizeof(int) * ARR_SIZE);
+  this -> data[0] = 0;
+  this -> data[1] = 0;
+  this -> data[2] = 0;
+  this -> data[3] = 0;
+  this -> data[4] = 0;
+}
 
 void Database::validate_index(int index) {
   if (index < 0) {
@@ -23,8 +32,4 @@ int* Database::get_data() {
 int Database::get_value(int index) {
   this->validate_index(index);
   return this->data[index];
-}
-
-int Database::get_size() {
-  return this->size;
 }
