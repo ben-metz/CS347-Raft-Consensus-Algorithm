@@ -1,5 +1,6 @@
 #include "database.h"
-#include <stdexcept>
+
+Database::Database(){}
 
 void Database::validate_index(int index) {
   if (index < 0) {

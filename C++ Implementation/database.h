@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #define ARR_SIZE 5
 
 class Database {
@@ -7,6 +9,7 @@ class Database {
     void validate_index(int index);
 
   public:
+    Database();
     int get_value(int index);
     int get_size();
     int* get_data();
