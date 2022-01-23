@@ -15,7 +15,7 @@ General, useful reference - https://raft.github.io/
 ## Outline
 
 ### Layout
-<img src="https://user-images.githubusercontent.com/47477832/150436308-ec163d4b-426a-496b-80c3-26c027c4229e.png" width="400">
+<img src="https://user-images.githubusercontent.com/47477832/150686980-559bae7e-cc7c-45a5-9470-64b399fd342a.png" width="400">
 
 ### Raft Library (C++)
 - Takes in messages from other instances of the libraries and responds appropriately according to the algorithm
