@@ -1,6 +1,7 @@
 #include "server.h"
 #include "manager.h"
 #include "database.h"
+#include <atomic>
 
 std::mutex mtx;
 
@@ -17,20 +18,20 @@ void Server::diagnostic() {
 }
 
 // Function to be performed by the server
-void Server::server_function(){
-    for (int i = 0; i < 3; i++){
-        std::cout << "\nIn Thread Function \n";
-
-        this -> diagnostic();
+void Server::server_function(std::atomic<bool>& running){
+    while(running){
+        //this -> diagnostic();
 
         std::ostringstream ss;
 
-        ss << std::this_thread::get_id();
+        ss << this -> getID() << ":";
 
-        std::string idstr = "hello from " + ss.str();
+        for (int i = 0; i < database -> get_size(); i++){
+            ss << this -> database -> get_value(i) << ' ';
+        }
 
         mtx.lock();
-        this -> manager -> send_msg(idstr);
+        this -> manager -> send_msg(ss.str());
         mtx.unlock();
     }
 }
@@ -38,23 +39,22 @@ void Server::server_function(){
 // Server initialiser
 Server::Server(){}
 
-void Server::initialise(int id, Manager* manager){
+// Initialise the variables used by the server
+void Server::initialise(int id, Manager* manager, std::atomic<bool>& running){
     this -> id = id;
     this -> database = (Database*) malloc(sizeof(Database));
     *this -> database = Database(5);
     this -> manager = manager;
 
-    std::cout << "\nBefore Thread ";
+    //this -> diagnostic();
 
-    this -> diagnostic();
-
-    this -> initThread();
+    this -> initThread(running);
 }
 
 // Initialise the thread with the thread function
-void Server::initThread(){
+void Server::initThread(std::atomic<bool>& running){
     this -> thread = (std::thread*) malloc(sizeof(std::thread));
-    *this -> thread = std::thread(&Server::server_function, this); 
+    *this -> thread = std::thread(&Server::server_function, this, std::ref(running)); 
 }
 
 // Return the ID of server

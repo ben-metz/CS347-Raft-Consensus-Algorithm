@@ -1,6 +1,9 @@
 #include "manager.h"
 #include "server.h"
 #include <unistd.h>
+#include <atomic>
+
+std::atomic_bool running {true};
 
 // Manager constructor, define socket and servers
 Manager::Manager(){
@@ -38,12 +41,14 @@ void Manager::init_servers(){
     }
 
     for(int i = 0; i < SERVER_COUNT; i++){
-        this -> servers[i].initialise(i, this);
+        this -> servers[i].initialise(i, this, std::ref(running));
     }
 }
 
 // When completed, join server threads and free stuff (not everything freed yet, bug fixing :( )
 void Manager::finish(){
+    running = false;
+
     this -> send_msg("Connection Ended...");
 
     std::cout << "Joining Threads...\n";

@@ -28,17 +28,16 @@ def send_command():
 def handle_packets(sock):
     while(True): # Wait for response (updated list)
         data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
-        print(data.decode())
-        # try:
-        #     split_decoded = data.decode().split(':')
-        #     text_boxes[int(data.decode()[0])].insert(0, 
-        #         (split_decoded[1],
-        #         split_decoded[2],
-        #         split_decoded[3],
-        #         split_decoded[4],
-        #         str(round(time.time(), 2))))
-        # except:
-        #     print("Error:\tDecode Error")
+        try:
+            split_decoded = data.decode().split(':')
+            text_boxes[int(data.decode()[0])].insert(0, 
+                ('-',
+                '-',
+                '-',
+                split_decoded[1],
+                str(round(time.time(), 2))))
+        except:
+            print("Error:\tDecode Error")
 
 def main():
     # Initialise thread for receiving packets
@@ -65,8 +64,6 @@ if __name__ == "__main__":
     root = Tk()
 
     fontStyle = tkFont.Font(family="Piboto", size=20)
-
-    print(tkFont.families())
 
     root.configure(background=bgCol)
 

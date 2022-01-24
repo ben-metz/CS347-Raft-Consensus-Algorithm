@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <sstream>
 #include <mutex>
+#include <atomic>
 
 class Database;
 
@@ -19,8 +20,8 @@ class Manager;
 class Server {
     private:
         int id;
-        void server_function();
-        void initThread();
+        void server_function(std::atomic<bool>& running);
+        void initThread(std::atomic<bool>& running);
         Manager* manager;
 
     public:
@@ -30,5 +31,5 @@ class Server {
         int getID();
         void join();
         void diagnostic();
-        void initialise(int id, Manager* manager);
+        void initialise(int id, Manager* manager, std::atomic<bool>& running);
 };

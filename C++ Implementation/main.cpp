@@ -20,8 +20,7 @@ int main(){
 
     signal(SIGINT, signal_callback_handler);
 
-    unsigned int microsecond = 1000000000;
-    usleep(microsecond);
+    while(true);
 
     manager -> send_msg("END");
 
