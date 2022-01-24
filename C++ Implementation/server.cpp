@@ -1,7 +1,8 @@
 #include "server.h"
-#include <unistd.h>
+#include "manager.h"
+#include "database.h"
 
-#include <sstream>
+std::mutex mtx;
 
 void Server::diagnostic() {
     int size = this -> database -> get_size();
@@ -17,26 +18,31 @@ void Server::diagnostic() {
 
 // Function to be performed by the server
 void Server::server_function(){
-    std::cout << "\nIn Thread Function \n";
+    for (int i = 0; i < 3; i++){
+        std::cout << "\nIn Thread Function \n";
 
-    this -> diagnostic();
+        this -> diagnostic();
 
-    std::ostringstream ss;
+        std::ostringstream ss;
 
-    ss << std::this_thread::get_id();
+        ss << std::this_thread::get_id();
 
-    std::string idstr = "hello from " + ss.str();
+        std::string idstr = "hello from " + ss.str();
 
-    this -> send_to_client(idstr);
+        mtx.lock();
+        this -> manager -> send_msg(idstr);
+        mtx.unlock();
+    }
 }
 
 // Server initialiser
-Server::Server(int id, int* sockfd, struct sockaddr_in* socket_address){
+Server::Server(){}
+
+void Server::initialise(int id, Manager* manager){
     this -> id = id;
     this -> database = (Database*) malloc(sizeof(Database));
-    *this -> database = Database();
-    this -> sockfd = sockfd;
-    this -> msg_socket = socket_address;
+    *this -> database = Database(5);
+    this -> manager = manager;
 
     std::cout << "\nBefore Thread ";
 
@@ -59,17 +65,5 @@ int Server::getID(){
 // Join the thread
 void Server::join(){
     this -> thread -> join();
-}
-
-// Send a message to the client
-void Server::send_to_client(std::string msg){
-    sendto(*(this -> sockfd), (const char *)msg.c_str(), strlen(msg.c_str()),
-        MSG_CONFIRM, (const struct sockaddr *) this -> msg_socket, 
-            sizeof(*(this -> msg_socket)));
-
-    
-    std::cout << "\n";
-    
-    printf("Message sent from server.\n");
 }
 

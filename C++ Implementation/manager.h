@@ -1,4 +1,3 @@
-// thread example
 #include <iostream>       // std::cout
 #include <thread>         // std::thread
 #include <stdio.h>
@@ -12,17 +11,17 @@
 #include <sstream>
 #include <mutex>
 
-#include "server.h"
-
 #define SERVER_COUNT 5
 #define IP          "127.0.0.1" // Loopback
 #define PORT        12345
+
+class Server;
 
 class Manager {
     private:
         void init_socket();
         void init_servers();
-
+    
     public:
         Manager();
         void send_msg(std::string msg);

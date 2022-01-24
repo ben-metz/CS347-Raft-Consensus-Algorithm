@@ -12,22 +12,23 @@
 #include <sstream>
 #include <mutex>
 
-#include "database.h"
+class Database;
+
+class Manager;
 
 class Server {
     private:
         int id;
         void server_function();
-        int* sockfd;
-        struct sockaddr_in* msg_socket;
         void initThread();
+        Manager* manager;
 
     public:
         std::thread* thread;
         Database *database;
-        Server(int id, int* sockfd, struct sockaddr_in* socket_address);
+        Server();
         int getID();
         void join();
         void diagnostic();
-        void send_to_client(std::string msg);
+        void initialise(int id, Manager* manager);
 };

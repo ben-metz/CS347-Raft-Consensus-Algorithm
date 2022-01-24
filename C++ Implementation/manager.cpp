@@ -1,4 +1,5 @@
 #include "manager.h"
+#include "server.h"
 #include <unistd.h>
 
 // Manager constructor, define socket and servers
@@ -23,6 +24,8 @@ void Manager::init_socket(){
     this -> servaddr -> sin_family = AF_INET;
     this -> servaddr -> sin_port = htons(PORT);
     this -> servaddr -> sin_addr.s_addr = INADDR_ANY;
+
+    this -> send_msg("Connection Started...");
 }
 
 // Initialise the servers
@@ -31,20 +34,27 @@ void Manager::init_servers(){
   
     // Initialise the server threads
     for(int i = 0; i < SERVER_COUNT; i++){
-        this -> servers[i] = Server(i, this -> sockfd, this -> servaddr);
-        unsigned int microsecond = 100000;
-        usleep(microsecond);//sleeps for 3 second
+        this -> servers[i] = Server();
+    }
+
+    for(int i = 0; i < SERVER_COUNT; i++){
+        this -> servers[i].initialise(i, this);
     }
 }
 
 // When completed, join server threads and free stuff (not everything freed yet, bug fixing :( )
 void Manager::finish(){
+    this -> send_msg("Connection Ended...");
+
+    std::cout << "Joining Threads...\n";
     for(int i = 0; i < SERVER_COUNT; i++){
         this -> servers[i].join();
     }
 
+    std::cout << "Closing Socket...\n";
     close(*(this -> sockfd));
 
+    std::cout << "Freeing Dynamic Memory...\n";
     free(this -> sockfd);
     free(this -> servaddr);
 }

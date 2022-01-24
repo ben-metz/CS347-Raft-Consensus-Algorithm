@@ -1,14 +1,30 @@
-#include "manager.h"
 #include <unistd.h>
+#include "manager.h"
+#include <cstdlib>
+#include <signal.h>
+
+Manager *manager;
+
+void signal_callback_handler(int signum) {
+   std::cout << "Caught signal: " << signum << "\n";
+
+   manager -> finish();
+
+   // Terminate program
+   exit(signum);
+}
 
 int main(){
-    Manager *manager = (Manager*) malloc(sizeof(Manager));
+    manager = (Manager*) malloc(sizeof(Manager));
     *manager = Manager();
 
-    unsigned int microsecond = 100000;
-    usleep(microsecond);//sleeps for 3 second
+    signal(SIGINT, signal_callback_handler);
+
+    unsigned int microsecond = 1000000000;
+    usleep(microsecond);
 
     manager -> send_msg("END");
 
     manager -> finish();
 }
+

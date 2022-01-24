@@ -1,15 +1,14 @@
 #include <stdexcept>
-
-#define ARR_SIZE 5
+#include <iostream>
 
 class Database {
   private:
     int *data;
-    int size = ARR_SIZE;
+    int* size;
     void validate_index(int index);
 
   public:
-    Database();
+    Database(int size);
     int get_value(int index);
     int get_size();
     int* get_data();
