@@ -1,16 +1,25 @@
 #include "server.h"
+#include <unistd.h>
 
 #include <sstream>
 
+void Server::diagnostic() {
+    int size = this -> database -> get_size();
+
+    std::cout << "\nSize: " << size << std::endl;
+
+    std:: cout << "Data: ";
+    for (int i = 0; i < size; i++){
+        std::cout << this -> database -> get_value(i);
+    }
+    std::cout << std:: endl;
+}
+
 // Function to be performed by the server
 void Server::server_function(){
-    std::cout << "\nIn Thread Function " << "\n" << "Data: ";
+    std::cout << "\nIn Thread Function \n";
 
-    for (int i = 0; i < 5; i++){
-        std::cout << database -> get_data()[i];
-    }
-
-    std::cout << "\nSize: " << this -> database -> get_size();
+    this -> diagnostic();
 
     std::ostringstream ss;
 
@@ -29,13 +38,9 @@ Server::Server(int id, int* sockfd, struct sockaddr_in* socket_address){
     this -> sockfd = sockfd;
     this -> msg_socket = socket_address;
 
-    std::cout << "\nBefore Thread " << "\nData: ";
+    std::cout << "\nBefore Thread ";
 
-    for (int i = 0; i < 5; i++){
-        std::cout << database -> get_data()[i];
-    }
-
-    std::cout << "\nSize: " << this -> database -> get_size() << "\n";
+    this -> diagnostic();
 
     this -> initThread();
 }

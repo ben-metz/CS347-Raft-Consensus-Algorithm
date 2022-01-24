@@ -2,11 +2,13 @@
 #include <iostream>
 
 Database::Database(){
-  this -> data[0] = 0;
-  this -> data[1] = 0;
-  this -> data[2] = 0;
-  this -> data[3] = 0;
-  this -> data[4] = 0;
+  const int size = ARR_SIZE;
+
+  this -> data = (int*) calloc(size, sizeof(int));
+
+  for (int i = 0; i < size; i++) {
+    this -> data[i] = 0;
+  }
 }
 
 void Database::validate_index(int index) {

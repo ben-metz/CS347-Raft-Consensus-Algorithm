@@ -31,9 +31,9 @@ void Manager::init_servers(){
   
     // Initialise the server threads
     for(int i = 0; i < SERVER_COUNT; i++){
+        this -> servers[i] = Server(i, this -> sockfd, this -> servaddr);
         unsigned int microsecond = 100000;
         usleep(microsecond);//sleeps for 3 second
-        this -> servers[i] = Server(i, this -> sockfd, this -> servaddr); 
     }
 }
 
