@@ -16,14 +16,15 @@
 
 class Server {
     private:
-        std::thread* thread;
-        Database *database;
         int id;
         void server_function();
         int* sockfd;
         struct sockaddr_in* msg_socket;
+        void initThread();
 
     public:
+        std::thread* thread;
+        Database *database;
         Server(int id, int* sockfd, struct sockaddr_in* socket_address);
         int getID();
         void join();

@@ -1,9 +1,7 @@
 #include "database.h"
-#include <algorithm>
 #include <iostream>
 
 Database::Database(){
-  this -> data = (int*) malloc(sizeof(int) * ARR_SIZE);
   this -> data[0] = 0;
   this -> data[1] = 0;
   this -> data[2] = 0;
@@ -27,6 +25,10 @@ void Database::set_value(int index, int value) {
 
 int* Database::get_data() {
   return this->data;
+}
+
+int Database::get_size() {
+  return this->size;
 }
 
 int Database::get_value(int index) {

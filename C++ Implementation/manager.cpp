@@ -1,12 +1,13 @@
 #include "manager.h"
 #include <unistd.h>
 
+// Manager constructor, define socket and servers
 Manager::Manager(){
-    this -> buffer = (char*) malloc(sizeof(char) * MAXLINE);
     this -> init_socket();
     this -> init_servers();
 }
 
+// Initialise the Python communication socket
 void Manager::init_socket(){
     this -> sockfd = (int*) malloc(sizeof(int));
 
@@ -24,19 +25,19 @@ void Manager::init_socket(){
     this -> servaddr -> sin_addr.s_addr = INADDR_ANY;
 }
 
+// Initialise the servers
 void Manager::init_servers(){
     this -> servers = (Server*) malloc(sizeof(Server) * SERVER_COUNT);
-
-    unsigned int microsecond = 10000;
-    usleep(3 * microsecond);
   
     // Initialise the server threads
     for(int i = 0; i < SERVER_COUNT; i++){
-        usleep(3 * microsecond);
+        unsigned int microsecond = 100000;
+        usleep(microsecond);//sleeps for 3 second
         this -> servers[i] = Server(i, this -> sockfd, this -> servaddr); 
     }
 }
 
+// When completed, join server threads and free stuff (not everything freed yet, bug fixing :( )
 void Manager::finish(){
     for(int i = 0; i < SERVER_COUNT; i++){
         this -> servers[i].join();
@@ -45,7 +46,6 @@ void Manager::finish(){
     close(*(this -> sockfd));
 
     free(this -> sockfd);
-    free(this -> buffer);
     free(this -> servaddr);
 }
 

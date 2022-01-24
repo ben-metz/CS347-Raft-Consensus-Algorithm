@@ -1,22 +1,17 @@
-// thread example
-#include <iostream>       // std::cout
-#include <thread>         // std::thread
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sstream>
-
 #include "server.h"
 
 #include <sstream>
 
 // Function to be performed by the server
 void Server::server_function(){
+    std::cout << "\nIn Thread Function " << "\n" << "Data: ";
+
+    for (int i = 0; i < 5; i++){
+        std::cout << database -> get_data()[i];
+    }
+
+    std::cout << "\nSize: " << this -> database -> get_size();
+
     std::ostringstream ss;
 
     ss << std::this_thread::get_id();
@@ -34,16 +29,21 @@ Server::Server(int id, int* sockfd, struct sockaddr_in* socket_address){
     this -> sockfd = sockfd;
     this -> msg_socket = socket_address;
 
+    std::cout << "\nBefore Thread " << "\nData: ";
+
     for (int i = 0; i < 5; i++){
         std::cout << database -> get_data()[i];
     }
 
+    std::cout << "\nSize: " << this -> database -> get_size() << "\n";
+
+    this -> initThread();
+}
+
+// Initialise the thread with the thread function
+void Server::initThread(){
     this -> thread = (std::thread*) malloc(sizeof(std::thread));
     *this -> thread = std::thread(&Server::server_function, this); 
-
-    for (int i = 0; i < 5; i++){
-        std::cout << database -> get_data()[i];
-    }
 }
 
 // Return the ID of server

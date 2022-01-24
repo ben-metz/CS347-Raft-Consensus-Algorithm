@@ -14,17 +14,12 @@
 
 #include "server.h"
 
-#define SERVER_COUNT 7
-#define MAXLINE     1024 // Socket buffer size
+#define SERVER_COUNT 5
 #define IP          "127.0.0.1" // Loopback
 #define PORT        12345
 
 class Manager {
     private:
-        int *sockfd;
-        char* buffer;
-        struct sockaddr_in*     servaddr;
-        Server* servers;
         void init_socket();
         void init_servers();
 
@@ -32,4 +27,7 @@ class Manager {
         Manager();
         void send_msg(std::string msg);
         void finish();
+        int *sockfd;
+        struct sockaddr_in* servaddr;
+        Server* servers;
 };
