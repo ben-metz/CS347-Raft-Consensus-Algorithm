@@ -28,5 +28,6 @@ class Server {
         Server(int id, int* sockfd, struct sockaddr_in* socket_address);
         int getID();
         void join();
+        void diagnostic();
         void send_to_client(std::string msg);
 };
