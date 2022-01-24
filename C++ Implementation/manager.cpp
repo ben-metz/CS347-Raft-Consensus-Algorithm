@@ -49,12 +49,12 @@ void Manager::init_servers(){
 void Manager::finish(){
     running = false;
 
-    this -> send_msg("Connection Ended...");
-
     std::cout << "Joining Threads...\n";
     for(int i = 0; i < SERVER_COUNT; i++){
         this -> servers[i].join();
     }
+    
+    this -> send_msg("Connection Ended...");
 
     std::cout << "Closing Socket...\n";
     close(*(this -> sockfd));

@@ -20,6 +20,7 @@ void Server::diagnostic() {
 // Function to be performed by the server
 void Server::server_function(std::atomic<bool>& running){
     while(running){
+    //for (int i = 0; i < 5; i++){
         //this -> diagnostic();
 
         std::ostringstream ss;

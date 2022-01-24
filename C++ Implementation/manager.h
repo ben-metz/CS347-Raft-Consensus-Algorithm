@@ -11,7 +11,7 @@
 #include <sstream>
 #include <mutex>
 
-#define SERVER_COUNT 5
+#define SERVER_COUNT 6
 #define IP          "127.0.0.1" // Loopback
 #define PORT        12345
 

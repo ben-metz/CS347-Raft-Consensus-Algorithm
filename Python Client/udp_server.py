@@ -29,13 +29,26 @@ def handle_packets(sock):
     while(True): # Wait for response (updated list)
         data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
         try:
-            split_decoded = data.decode().split(':')
+            decoded = data.decode()
+            print(decoded)
+
+            if ("Started" in decoded):
+                con.configure(text='Connected', bg = "green")
+                continue
+
+            if ("Ended" in decoded):
+                con.configure(text='Disconnected', bg = "red")
+                continue
+
+            split_decoded = decoded.split(':')
             text_boxes[int(data.decode()[0])].insert(0, 
                 ('-',
                 '-',
                 '-',
                 split_decoded[1],
                 str(round(time.time(), 2))))
+
+            con.configure(text='Connected', bg = "green")
         except:
             print("Error:\tDecode Error")
 
@@ -85,6 +98,9 @@ if __name__ == "__main__":
 
     b = Button(root,text='Send',command=send_command)
     b.grid(row=4, column=3)
+
+    con = Button(root,text='Disonnected', bg="red")
+    con.grid(row=1, column=1)
 
     text_boxes = []
 
