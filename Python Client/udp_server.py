@@ -9,6 +9,8 @@ import time
 
 from multilistbox import MultiListbox
 
+names = ["Client", "Server 1", "Server 2", "Server 3", "Server 4", "Server 5"]
+
 # Sends command when Send pressed
 def send_command():
     global index, value
@@ -52,6 +54,9 @@ def handle_packets(sock):
         except:
             print("Error:\tDecode Error")
 
+def rgb_hack(rgb):
+    return '#%02x%02x%02x' % rgb
+
 def main():
     # Initialise thread for receiving packets
     receiver = threading.Thread(target=handle_packets, args=(sock,), daemon=True)
@@ -70,56 +75,114 @@ if __name__ == "__main__":
     sock.bind((esp_ip, esp_port))
 
     # Interface colours
-    textCol = "black"
-    bgCol ="light grey"
+    textCol = rgb_hack((200, 200, 200))
+    bgCol = rgb_hack((25, 25, 25))
 
     # Tkinter interface construction
     root = Tk()
 
     fontStyle = tkFont.Font(family="Piboto", size=20)
+    titleFont = tkFont.Font(family="Piboto", size=32)
 
     root.configure(background=bgCol)
 
     root.title('ESP Interface')
 
-    index_label = Label(root, text="Index", font=fontStyle)
+    root_title = Label(root, text="Raft Consensus Algorithm Interface", font=titleFont)
+    root_title.configure(foreground=textCol, background=bgCol)
+    root_title.grid(row=0, column=2)
+
+    # Input frame
+    input_frame = Frame(root, bg=bgCol)
+    input_frame.grid(row=1, column=1)
+
+    input_title = Label(input_frame, text="Input", font=titleFont)
+    input_title.configure(foreground=textCol, background=bgCol)
+    input_title.grid(row=0, column=1)
+
+    index_label = Label(input_frame, text="Index", font=fontStyle)
     index_label.configure(foreground=textCol, background=bgCol)
-    index_label.grid(row=0, column=3)
+    index_label.grid(row=1, column=1)
 
-    index = Entry(root)
-    index.grid(row=1, column=3)
+    index = Entry(input_frame)
+    index.grid(row=2, column=1)
 
-    value_label = Label(root, text="Value", font=fontStyle)
+    value_label = Label(input_frame, text="Value", font=fontStyle)
     value_label.configure(foreground=textCol, background=bgCol)
-    value_label.grid(row=2, column=3)
+    value_label.grid(row=3, column=1)
 
-    value = Entry(root)
-    value.grid(row=3, column=3)
+    value = Entry(input_frame)
+    value.grid(row=4, column=1)
 
-    b = Button(root,text='Send',command=send_command)
-    b.grid(row=4, column=3)
+    b = Button(input_frame,text='Send',command=send_command)
+    b.grid(row=5, column=1)
 
-    con = Button(root,text='Disonnected', bg="red")
-    con.grid(row=1, column=1)
+    con = Button(input_frame,text='Disonnected', bg="red")
+    con.grid(row=6, column=1)
+
+    # # Config frame
+    # config_frame = Frame(root, bg=bgCol)
+    # config_frame.grid(row=1, column=5)
+
+    # config_title = Label(config_frame, text="Config", font=titleFont)
+    # config_title.configure(foreground=textCol, background=bgCol)
+    # config_title.grid(row=6, column=1)
+
+    # cfgs = []
+    # cfg_buttons = []
+
+    # for i in range(6):
+    #     config_label = Label(config_frame, text="Config for " + names[i], font=fontStyle)
+    #     config_label.configure(foreground=textCol, background=bgCol)
+    #     config_label.grid(row=7 + 4*i, column=1)
+
+    #     ip = Entry(config_frame)
+    #     ip.grid(row=8 + 4*i, column=1)
+
+    #     port = Entry(config_frame)
+    #     port.grid(row=9 + 4*i, column=1)
+
+    #     sub = Button(config_frame,text='Submit',command=send_command)
+    #     sub.grid(row=10 + 4*i, column=1)
+
+    #     cfgs.append([ip, port])
+
+    # Border frames
+    border1 = Frame(root, width = 40, height = 40, background=bgCol)
+    border1.grid(row=0,column=0)
+
+    border2 = Frame(root, width = 40, height = 40, background=bgCol)
+    border2.grid(row=500,column=500)
+
+    component_split = Frame(root, width = 1000, height = 40, background=bgCol)
+    component_split.grid(row=500,column=2)
+
+    # details frame
+    details_frame = Frame(root, bg=bgCol)
+    details_frame.grid(row=1, column=2)
+
+    details_split = Frame(details_frame, width = 40, height = 40, background=bgCol)
+    details_split.grid(row=500,column=2)
 
     text_boxes = []
 
-    for i in [0, 2, 4, 6]:
-        root.grid_columnconfigure(i, minsize=25)
-
     for i in range(0, 6):
-        if (i == 0):
-            label = Label(root, text="SERVER", font=fontStyle)
-        else:
-            label = Label(root, text="ESP "  + str(i), font=fontStyle)
+        label = Label(details_frame, text=names[i], font=fontStyle)
 
         label.configure(foreground=textCol, background=bgCol)
-        label.grid(row = 5 + 2 * math.floor(i/3), column = 2*(i - 3*math.floor(i/3)) + 1)
+        label.grid(row = 3 * math.floor(i/2), column = 3*(i - 2*math.floor(i/2)) + 1)
 
-        text_box = MultiListbox(root, (('State', 8), ('Term', 8), ('Voted For', 8), ('Array', 20), ('Time', 20)))
-
-        text_box.grid(row = 6 + 2 * math.floor(i/3), column = 2*(i - 3*math.floor(i/3)) + 1)
+        text_box = MultiListbox(details_frame, (('State', 8), ('Term', 8), ('Voted For', 8), ('Array', 20), ('Time', 20)))
+        text_box.grid(row = 1 + 3 * math.floor(i/2), column = 3*(i - 2*math.floor(i/2)) + 1)
 
         text_boxes.append(text_box)
+
+    for i in range(100):
+        text_boxes[0].insert(0, 
+                    ('-',
+                    '-',
+                    '-',
+                " split_decoded[1]",
+                    str(round(time.time(), 2))))
 
     main()
