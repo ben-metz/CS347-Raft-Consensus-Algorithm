@@ -17,13 +17,10 @@ void signal_callback_handler(int signum) {
 int main(){
     manager = (Manager*) malloc(sizeof(Manager));
     *manager = Manager();
+    manager -> initialise(5);
 
     signal(SIGINT, signal_callback_handler);
 
     while(true);
-
-    manager -> send_msg("END");
-
-    manager -> finish();
 }
 

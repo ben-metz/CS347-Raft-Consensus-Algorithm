@@ -31,5 +31,7 @@ class Server {
         int getID();
         void join();
         void diagnostic();
-        void initialise(int id, Manager* manager, std::atomic<bool>& running);
+        void initialise(int id, Manager* manager, std::atomic<bool>& running, unsigned long long next_time, int delay);
+        unsigned long long* next_time;
+        int* delay; // Delay between update messages
 };

@@ -10,23 +10,35 @@
 #include <netinet/in.h>
 #include <sstream>
 #include <mutex>
+#include <atomic>
 
 #define SERVER_COUNT 6
 #define IP          "127.0.0.1" // Loopback
-#define PORT        12345
+#define SEND_PORT   12345
+#define RCV_PORT    12346
 
 class Server;
 
 class Manager {
     private:
-        void init_socket();
-        void init_servers();
+        void init_sockets();
+        void init_servers(int updates_per_second);
+        void init_listener();
+        void listener_function(std::atomic<bool>& running);
+        char* rcv_buffer;
+        int* rcv_n;
+        socklen_t* rcv_socklen;
+        std::atomic_bool* running_;
     
     public:
         Manager();
+        void initialise(int updates_per_second);
         void send_msg(std::string msg);
         void finish();
-        int *sockfd;
-        struct sockaddr_in* servaddr;
+        int *receive_socket_fd;
+        int *send_socket_fd;
+        struct sockaddr_in* send_addr;
+        struct sockaddr_in* rcv_addr;
         Server* servers;
+        std::thread* listener;
 };

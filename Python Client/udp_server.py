@@ -9,8 +9,6 @@ import time
 
 from multilistbox import MultiListbox
 
-names = ["Client", "Server 1", "Server 2", "Server 3", "Server 4", "Server 5"]
-
 # Sends command when Send pressed
 def send_command():
     global index, value
@@ -20,19 +18,18 @@ def send_command():
     try:
         if ((int(index_val) >= 0) & (int(index_val) < 5)):
             string = str(int(index_val)) + ' ' + str(int(value_val))
-            sock.sendto(bytes(string, 'utf-8'), (esp_ip, esp_port))
+            client_send_socket.sendto(bytes(string, 'utf-8'), (client_ip, client_send_port))
         else:
             print("Error:\tInvalid Input")
     except:
         print("Error:\tInvalid Input")
 
 # Takes incoming packets, splits up and places in correct text box
-def handle_packets(sock):
+def handle_packets(client_receive_socket):
     while(True): # Wait for response (updated list)
-        data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+        data, addr = client_receive_socket.recvfrom(1024) # buffer size is 1024 bytes
         try:
             decoded = data.decode()
-            print(decoded)
 
             if ("Started" in decoded):
                 con.configure(text='Connected', bg = "green")
@@ -59,7 +56,7 @@ def rgb_hack(rgb):
 
 def main():
     # Initialise thread for receiving packets
-    receiver = threading.Thread(target=handle_packets, args=(sock,), daemon=True)
+    receiver = threading.Thread(target=handle_packets, args=(client_receive_socket,), daemon=True)
     receiver.start()
 
     # Begin UI loop
@@ -67,12 +64,15 @@ def main():
         
 if __name__ == "__main__":
     # IP of ESP and port used
-    esp_ip = "127.0.0.1"
-    esp_port = 12345
+    client_ip = "127.0.0.1"
+    client_receive_port = 12345
+    client_send_port = 12346
 
     # Define UDP socket and bind to port
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
-    sock.bind((esp_ip, esp_port))
+    client_receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
+    client_receive_socket.bind((client_ip, client_receive_port))
+
+    client_send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # UDP
 
     # Interface colours
     textCol = rgb_hack((200, 200, 200))
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     text_boxes = []
 
     for i in range(0, 6):
-        label = Label(details_frame, text=names[i], font=fontStyle)
+        label = Label(details_frame, text="Server " + str(i), font=fontStyle)
 
         label.configure(foreground=textCol, background=bgCol)
         label.grid(row = 3 * math.floor(i/2), column = 3*(i - 2*math.floor(i/2)) + 1)
@@ -176,13 +176,5 @@ if __name__ == "__main__":
         text_box.grid(row = 1 + 3 * math.floor(i/2), column = 3*(i - 2*math.floor(i/2)) + 1)
 
         text_boxes.append(text_box)
-
-    for i in range(100):
-        text_boxes[0].insert(0, 
-                    ('-',
-                    '-',
-                    '-',
-                " split_decoded[1]",
-                    str(round(time.time(), 2))))
 
     main()

@@ -2,52 +2,47 @@
 #include "manager.h"
 #include "database.h"
 #include <atomic>
+#include <chrono>
 
 std::mutex mtx;
-
-void Server::diagnostic() {
-    int size = this -> database -> get_size();
-
-    std::cout << "\nSize: " << size << std::endl;
-
-    std:: cout << "Data: ";
-    for (int i = 0; i < size; i++){
-        std::cout << this -> database -> get_value(i);
-    }
-    std::cout << std:: endl;
-}
-
-// Function to be performed by the server
-void Server::server_function(std::atomic<bool>& running){
-    while(running){
-    //for (int i = 0; i < 5; i++){
-        //this -> diagnostic();
-
-        std::ostringstream ss;
-
-        ss << this -> getID() << ":";
-
-        for (int i = 0; i < database -> get_size(); i++){
-            ss << this -> database -> get_value(i) << ' ';
-        }
-
-        mtx.lock();
-        this -> manager -> send_msg(ss.str());
-        mtx.unlock();
-    }
-}
 
 // Server initialiser
 Server::Server(){}
 
+// Function to be performed by the server
+void Server::server_function(std::atomic<bool>& running){
+    using namespace std::chrono;
+
+    while(running){
+        unsigned long long ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+        if (ms >= *this -> next_time){
+            *this -> next_time = ms + *this -> delay;
+            std::ostringstream ss;
+
+            ss << this -> getID() << ":";
+
+            for (int i = 0; i < database -> get_size(); i++){
+                ss << this -> database -> get_value(i) << ' ';
+            }
+
+            mtx.lock();
+            this -> manager -> send_msg(ss.str());
+            mtx.unlock();
+        }
+    }
+}
+
 // Initialise the variables used by the server
-void Server::initialise(int id, Manager* manager, std::atomic<bool>& running){
+void Server::initialise(int id, Manager* manager, std::atomic<bool>& running, unsigned long long next_time, int delay){
     this -> id = id;
     this -> database = (Database*) malloc(sizeof(Database));
     *this -> database = Database(5);
     this -> manager = manager;
+    this -> delay = (int*) malloc(sizeof(int));
+    this -> next_time = (unsigned long long*) malloc(sizeof(unsigned long long));
 
-    //this -> diagnostic();
+    *this -> delay = delay;
+    *this -> next_time = next_time;
 
     this -> initThread(running);
 }

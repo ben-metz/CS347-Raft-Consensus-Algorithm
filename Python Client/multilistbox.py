@@ -8,7 +8,7 @@ class MultiListbox(Frame):
         for l,w in lists:
             frame = Frame(self); frame.pack(side=LEFT, expand=YES, fill=BOTH)
             Label(frame, text=l, borderwidth=1, relief=RAISED, fg = "white", bg=self.rgb_hack((75, 75, 75))).pack(fill=X)
-            lb = Listbox(frame, width=w, height=12, borderwidth=0, selectborderwidth=0,
+            lb = Listbox(frame, width=w, height=8, borderwidth=0, selectborderwidth=0,
                          relief=FLAT, exportselection=FALSE, bg=self.rgb_hack((50, 50, 50)), fg = "white")
             lb.pack(expand=YES, fill=BOTH)
             self.lists.append(lb)
