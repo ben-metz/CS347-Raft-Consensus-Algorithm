@@ -35,9 +35,6 @@ void Manager::init_sockets(){
         exit(EXIT_FAILURE);
     }
 
-    this -> send_addr = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
-    this -> rcv_addr = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
-       
     // Filling server information
     this -> send_addr.sin_family = AF_INET;
     this -> send_addr.sin_port = htons(SEND_PORT);
