@@ -73,8 +73,6 @@ void Manager::listener_function(std::atomic<bool>& running){
             std::cout << this -> rcv_buffer << '\n';
         }
     }
-
-    std::cout << "Exited Successfully" << std::endl;
 }
 
 // Initialise update listener
@@ -101,7 +99,7 @@ void Manager::init_servers(int updates_per_second){
     unsigned long long ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
     for(int i = 0; i < SERVER_COUNT; i++){
-        this -> servers[i].initialise(i, this, std::ref(*this -> running_), ms + i * ((1000/updates_per_second)/SERVER_COUNT), 1000/updates_per_second);
+        this -> servers[i].initialise(i, this, std::ref(*this -> running_), ms + i * ((1000/updates_per_second)/SERVER_COUNT), 1000/updates_per_second, SERVER_START_PORT + i);
     }
 }
 
@@ -109,24 +107,23 @@ void Manager::init_servers(int updates_per_second){
 void Manager::finish(){
     *this -> running_ = false;
 
-    std::cout << "Joining Threads...\n";
-    
     for(int i = 0; i < SERVER_COUNT; i++){
         this -> servers[i].join();
+        std::cout << "Joined Server " << i << " Thread\n";
     }
 
     this -> listener -> join();
+    std::cout << "Joined Python Listener Thread\n";
 
     free(this -> listener);
     free(this -> servers);
 
     this -> send_msg("Connection Ended...");
 
-    std::cout << "Closing Socket...\n";
+    std::cout << "Closing Python Communication Sockets and Freeing Memory...\n";
     close(*(this -> receive_socket_fd));
     close(*(this -> send_socket_fd));
 
-    std::cout << "Freeing Dynamic Memory...\n";
     free(this -> receive_socket_fd);
     free(this -> send_socket_fd);
 
@@ -138,7 +135,7 @@ void Manager::finish(){
 // Sends a message back to the client
 void Manager::send_msg(std::string msg) 
 {
-    sendto(*(this -> receive_socket_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
+    sendto(*(this -> send_socket_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
         MSG_CONFIRM, (const struct sockaddr *) &(this -> send_addr), 
             sizeof(this -> send_addr));
 }

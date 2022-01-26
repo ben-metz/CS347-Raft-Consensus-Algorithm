@@ -12,10 +12,11 @@
 #include <mutex>
 #include <atomic>
 
-#define SERVER_COUNT 6
-#define IP          "127.0.0.1" // Loopback
-#define SEND_PORT   12345
-#define RCV_PORT    12346
+#define SERVER_COUNT        6
+#define IP                  "127.0.0.1" // Loopback
+#define SEND_PORT           12345 // Port to send details to Python
+#define RCV_PORT            12346 // Port to receive things commands Python
+#define SERVER_START_PORT   12347 // Port for inter-server communication
 
 class Server;
 

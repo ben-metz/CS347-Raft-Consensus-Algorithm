@@ -6,7 +6,7 @@
 Manager *manager;
 
 void signal_callback_handler(int signum) {
-   std::cout << "Caught signal: " << signum << "\n";
+   std::cout << "\nCaught Signal: " << signum << "\n";
 
    manager -> finish();
 
@@ -17,7 +17,7 @@ void signal_callback_handler(int signum) {
 int main(){
     manager = (Manager*) malloc(sizeof(Manager));
     *manager = Manager();
-    manager -> initialise(5);
+    manager -> initialise(10);
 
     signal(SIGINT, signal_callback_handler);
 
