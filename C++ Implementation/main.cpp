@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <signal.h>
 
+#define MESSAGES_PER_SECOND 2
+
 Manager *manager;
 
 void signal_callback_handler(int signum) {
@@ -17,7 +19,7 @@ void signal_callback_handler(int signum) {
 int main(){
     manager = (Manager*) malloc(sizeof(Manager));
     *manager = Manager();
-    manager -> initialise(10);
+    manager -> initialise(MESSAGES_PER_SECOND);
 
     signal(SIGINT, signal_callback_handler);
 

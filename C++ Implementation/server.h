@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 
-#define DATABASE_SIZE 10
+#define DATABASE_SIZE 5
 
 class Database;
 
