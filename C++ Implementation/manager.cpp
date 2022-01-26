@@ -35,22 +35,19 @@ void Manager::init_sockets(){
         exit(EXIT_FAILURE);
     }
 
-    this -> send_addr = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
-    this -> rcv_addr = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
-       
     // Filling server information
-    this -> send_addr -> sin_family = AF_INET;
-    this -> send_addr -> sin_port = htons(SEND_PORT);
-    this -> send_addr -> sin_addr.s_addr = INADDR_ANY;
+    this -> send_addr.sin_family = AF_INET;
+    this -> send_addr.sin_port = htons(SEND_PORT);
+    this -> send_addr.sin_addr.s_addr = INADDR_ANY;
 
-    this -> rcv_addr -> sin_family = AF_INET;
-    this -> rcv_addr -> sin_port = htons(RCV_PORT);
-    this -> rcv_addr -> sin_addr.s_addr = INADDR_ANY;
+    this -> rcv_addr.sin_family = AF_INET;
+    this -> rcv_addr.sin_port = htons(RCV_PORT);
+    this -> rcv_addr.sin_addr.s_addr = INADDR_ANY;
 
     // Bind the socket with the server address
     if ( bind(*receive_socket_fd, 
-            (const struct sockaddr *) rcv_addr, 
-            sizeof(*rcv_addr)) < 0 )
+            (const struct sockaddr *) &rcv_addr, 
+            sizeof(rcv_addr)) < 0 )
     {
         perror("bind failed");
         exit(EXIT_FAILURE);
@@ -77,7 +74,7 @@ void Manager::listener_function(std::atomic<bool>& running){
         }
     }
 
-    std::cout << "Exited Successfully";
+    std::cout << "Exited Successfully" << std::endl;
 }
 
 // Initialise update listener
@@ -122,8 +119,8 @@ void Manager::finish(){
 
     free(this -> listener);
     free(this -> servers);
-    
-    //this -> send_msg("Connection Ended...");
+
+    this -> send_msg("Connection Ended...");
 
     std::cout << "Closing Socket...\n";
     close(*(this -> receive_socket_fd));
@@ -132,8 +129,6 @@ void Manager::finish(){
     std::cout << "Freeing Dynamic Memory...\n";
     free(this -> receive_socket_fd);
     free(this -> send_socket_fd);
-    free(this -> rcv_addr);
-    free(this -> send_addr);
 
     free(this -> rcv_buffer);
     free(this -> rcv_n);
@@ -144,6 +139,6 @@ void Manager::finish(){
 void Manager::send_msg(std::string msg) 
 {
     sendto(*(this -> receive_socket_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
-        MSG_CONFIRM, (const struct sockaddr *) this -> send_addr, 
-            sizeof(*(this -> send_addr)));
+        MSG_CONFIRM, (const struct sockaddr *) &(this -> send_addr), 
+            sizeof(this -> send_addr));
 }

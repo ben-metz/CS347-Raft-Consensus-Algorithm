@@ -37,8 +37,8 @@ class Manager {
         void finish();
         int *receive_socket_fd;
         int *send_socket_fd;
-        struct sockaddr_in* send_addr;
-        struct sockaddr_in* rcv_addr;
+        struct sockaddr_in send_addr;
+        struct sockaddr_in rcv_addr;
         Server* servers;
         std::thread* listener;
 };
