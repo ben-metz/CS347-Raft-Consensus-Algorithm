@@ -74,7 +74,7 @@ void Manager::listener_function(std::atomic<bool>& running){
         }
     }
 
-    std::cout << "Exited Successfully";
+    std::cout << "Exited Successfully" << std::endl;
 }
 
 // Initialise update listener
