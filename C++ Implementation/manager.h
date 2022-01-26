@@ -4,13 +4,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <sstream>
 #include <mutex>
 #include <atomic>
+#include <fcntl.h>
 
 #define SERVER_COUNT        6
 #define IP                  "127.0.0.1" // Loopback
@@ -42,4 +40,5 @@ class Manager {
         struct sockaddr_in rcv_addr;
         Server* servers;
         std::thread* listener;
+        void addSocket(int id, int* fd, struct sockaddr_in sock_addr);
 };

@@ -1,9 +1,6 @@
 #include "server.h"
 #include "manager.h"
 #include "database.h"
-#include <atomic>
-#include <chrono>
-#include <fcntl.h>
 
 std::mutex mtx;
 
@@ -11,7 +8,8 @@ std::mutex mtx;
 Server::Server(){}
 
 // Initialise the variables used by the server
-void Server::initialise(int id, Manager* manager, std::atomic<bool>& running, unsigned long long next_time, int delay, int port){
+void Server::initialise(int id, Manager* manager, std::atomic<bool>& running, 
+    unsigned long long next_time, int delay, int port, int neighbour_count){
     this -> id = id;
     this -> database = (Database*) malloc(sizeof(Database));
     *this -> database = Database(5);
@@ -19,8 +17,13 @@ void Server::initialise(int id, Manager* manager, std::atomic<bool>& running, un
     this -> delay = (int*) malloc(sizeof(int));
     this -> next_time = (unsigned long long*) malloc(sizeof(unsigned long long));
 
+    this -> neighbours_added = (int*) malloc(sizeof(int));
+    *this -> neighbours_added = 0;
+
     *this -> delay = delay;
     *this -> next_time = next_time;
+
+    this -> neighbours = (struct neighbour*) malloc(sizeof(struct neighbour) * neighbour_count);
 
     this -> initThread(running);
 
@@ -38,6 +41,7 @@ void Server::server_function(std::atomic<bool>& running){
     fcntl(*receive_socket_fd, F_SETFL, flags);
 
     while(running){
+        // Send details every so often
         unsigned long long ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
         if (ms >= *this -> next_time){
             *this -> next_time = ms + *this -> delay;
@@ -45,6 +49,7 @@ void Server::server_function(std::atomic<bool>& running){
             this -> send_details();
         }
 
+        // Print received messages
         *this -> rcv_n = recvfrom(*receive_socket_fd, (char *) this -> rcv_buffer, 1024, 
             MSG_WAITALL, ( struct sockaddr *) &rcv_addr,
             this -> rcv_socklen);
@@ -52,7 +57,7 @@ void Server::server_function(std::atomic<bool>& running){
         if (*this -> rcv_n != -1){
             this -> rcv_buffer[*this -> rcv_n] = '\0';
 
-            std::cout << "Server " << this -> getID() << " Received " << this -> rcv_buffer << '\n';
+            std::cout << "Server " << this -> getID() << " Received Message: " << this -> rcv_buffer << '\n';
         }
     }
 }
@@ -98,13 +103,18 @@ void Server::initSocket(int port){
     this -> rcv_addr.sin_addr.s_addr = INADDR_ANY;
 
     // Bind the socket with the server address
-    if ( bind(*receive_socket_fd, 
-            (const struct sockaddr *) &rcv_addr, 
-            sizeof(rcv_addr)) < 0 )
+    if ( bind(*this -> receive_socket_fd, 
+            (const struct sockaddr *) &this -> rcv_addr, 
+            sizeof(this -> rcv_addr)) < 0 )
     {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
+}
+
+// Adds this socket to the neighbours of the other servers
+void Server::addToNeighbours(){
+    this -> manager -> addSocket(this -> getID(), this -> receive_socket_fd, this -> rcv_addr);
 }
 
 // Return the ID of server
@@ -124,5 +134,29 @@ void Server::join(){
     free(this -> rcv_buffer);
     free(this -> rcv_n);
     free(this -> rcv_socklen);
+}
+
+// Adds a socket to the neighbours array of the server
+void Server::addSocket(int neighbour_id, int* fd, struct sockaddr_in addr){
+    this -> neighbours[*this -> neighbours_added].neighbour_id = neighbour_id;
+    this -> neighbours[*this -> neighbours_added].fd = fd;
+    this -> neighbours[*this -> neighbours_added].addr = addr;
+
+    *this -> neighbours_added += 1;
+
+    std::string msg = "hello server " + std::to_string(neighbour_id) + " from " + std::to_string(this -> getID());
+
+    this -> sendToServer(neighbour_id, msg);
+}  
+
+// Sends message to the server with the specified ID
+void Server::sendToServer(int id, std::string msg){
+    for (int i = 0; i < *this -> neighbours_added; i++){
+        if (this -> neighbours[i].neighbour_id == id){
+            sendto(*(this -> neighbours[i].fd), (const char *) msg.c_str(), strlen(msg.c_str()),
+                MSG_CONFIRM, (const struct sockaddr *) &(this -> neighbours[i].addr), 
+                    sizeof(this -> neighbours[i].addr));
+        }
+    }
 }
 

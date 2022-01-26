@@ -1,21 +1,20 @@
-// thread example
-#include <iostream>       // std::cout
-#include <thread>         // std::thread
+#include <iostream>
+#include <thread>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sstream>
-#include <mutex>
-#include <atomic>
+#include <fcntl.h>
 
 class Database;
 
 class Manager;
+
+// Stores neighbour server communication details
+struct neighbour {
+    int neighbour_id;
+    int* fd;
+    struct sockaddr_in addr;
+};
 
 class Server {
     private:
@@ -26,6 +25,8 @@ class Server {
         char* rcv_buffer;
         int* rcv_n;
         socklen_t* rcv_socklen;
+        struct neighbour* neighbours;
+        int* neighbours_added;
 
     public:
         struct sockaddr_in rcv_addr;
@@ -35,9 +36,13 @@ class Server {
         Server();
         int getID();
         void join();
-        void initialise(int id, Manager* manager, std::atomic<bool>& running, unsigned long long next_time, int delay, int port);
+        void initialise(int id, Manager* manager, std::atomic<bool>& running, 
+            unsigned long long next_time, int delay, int port, int neighbour_count);
         unsigned long long* next_time;
         int* delay; // Delay between update messages
         void initSocket(int port);
         void send_details();
+        void addSocket(int neighbour_id, int* fd, struct sockaddr_in addr);
+        void addToNeighbours();
+        void sendToServer(int id, std::string msg);
 };

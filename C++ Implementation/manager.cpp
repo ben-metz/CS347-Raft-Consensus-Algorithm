@@ -1,8 +1,5 @@
 #include "manager.h"
 #include "server.h"
-#include <unistd.h>
-#include <chrono>
-#include <fcntl.h>
 
 // Manager constructor, define socket and servers
 Manager::Manager(){}
@@ -98,8 +95,16 @@ void Manager::init_servers(int updates_per_second){
     using namespace std::chrono;
     unsigned long long ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
+    // Allocate memory, start thread, etc
     for(int i = 0; i < SERVER_COUNT; i++){
-        this -> servers[i].initialise(i, this, std::ref(*this -> running_), ms + i * ((1000/updates_per_second)/SERVER_COUNT), 1000/updates_per_second, SERVER_START_PORT + i);
+        this -> servers[i].initialise(i, this, std::ref(*this -> running_), 
+            ms + i * ((1000/updates_per_second)/SERVER_COUNT), 
+            1000/updates_per_second, SERVER_START_PORT + i, SERVER_COUNT - 1);
+    }
+
+    // Share the sockets to all servers
+    for(int i = 0; i < SERVER_COUNT; i++){
+        this -> servers[i].addToNeighbours();
     }
 }
 
@@ -138,4 +143,13 @@ void Manager::send_msg(std::string msg)
     sendto(*(this -> send_socket_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
         MSG_CONFIRM, (const struct sockaddr *) &(this -> send_addr), 
             sizeof(this -> send_addr));
+}
+
+// Add socket to neighbour arrays for all servers except server with passed id
+void Manager::addSocket(int id, int* fd, struct sockaddr_in addr){
+    for (int i = 0; i < SERVER_COUNT; i++){
+        if (i != id){
+            servers[i].addSocket(id, fd, addr);
+        }
+    }
 }
