@@ -16,7 +16,7 @@ def send_command():
     value_val = value.get()
 
     try:
-        if ((int(index_val) >= 0) & (int(index_val) < 5)):
+        if ((int(index_val) >= 0) & (int(index_val) < 10)):
             string = str(int(index_val)) + ' ' + str(int(value_val))
             client_send_socket.sendto(bytes(string, 'utf-8'), (client_ip, client_send_port))
         else:
@@ -80,20 +80,28 @@ if __name__ == "__main__":
 
     # Tkinter interface construction
     root = Tk()
+    root.geometry("1280x720")
 
-    fontStyle = tkFont.Font(family="Piboto", size=20)
+    # Root frame
+    root_frame = Frame(root, bg=bgCol)
+    root_frame.place(relx=.5, rely=.5, anchor="center")
+
+    fontStyle = tkFont.Font(family="Piboto", size=16)
     titleFont = tkFont.Font(family="Piboto", size=32)
 
     root.configure(background=bgCol)
 
     root.title('ESP Interface')
 
-    root_title = Label(root, text="Raft Consensus Algorithm Interface", font=titleFont)
+    root_title = Label(root_frame, text="Raft Consensus Algorithm Interface", font=titleFont)
     root_title.configure(foreground=textCol, background=bgCol)
-    root_title.grid(row=0, column=2)
+    root_title.grid(row=0, column=3)
+
+    con = Button(root_frame,text='Disonnected', bg="red")
+    con.grid(row=0, column=1)
 
     # Input frame
-    input_frame = Frame(root, bg=bgCol)
+    input_frame = Frame(root_frame, bg=bgCol)
     input_frame.grid(row=1, column=1)
 
     input_title = Label(input_frame, text="Input", font=titleFont)
@@ -114,54 +122,21 @@ if __name__ == "__main__":
     value = Entry(input_frame)
     value.grid(row=4, column=1)
 
+    button_sep = Frame(input_frame, width = 40, height = 40, background=bgCol)
+    button_sep.grid(row=5,column=1)
+
     b = Button(input_frame,text='Send',command=send_command)
-    b.grid(row=5, column=1)
-
-    con = Button(input_frame,text='Disonnected', bg="red")
-    con.grid(row=6, column=1)
-
-    # # Config frame
-    # config_frame = Frame(root, bg=bgCol)
-    # config_frame.grid(row=1, column=5)
-
-    # config_title = Label(config_frame, text="Config", font=titleFont)
-    # config_title.configure(foreground=textCol, background=bgCol)
-    # config_title.grid(row=6, column=1)
-
-    # cfgs = []
-    # cfg_buttons = []
-
-    # for i in range(6):
-    #     config_label = Label(config_frame, text="Config for " + names[i], font=fontStyle)
-    #     config_label.configure(foreground=textCol, background=bgCol)
-    #     config_label.grid(row=7 + 4*i, column=1)
-
-    #     ip = Entry(config_frame)
-    #     ip.grid(row=8 + 4*i, column=1)
-
-    #     port = Entry(config_frame)
-    #     port.grid(row=9 + 4*i, column=1)
-
-    #     sub = Button(config_frame,text='Submit',command=send_command)
-    #     sub.grid(row=10 + 4*i, column=1)
-
-    #     cfgs.append([ip, port])
+    b.grid(row=6, column=1)
 
     # Border frames
-    border1 = Frame(root, width = 40, height = 40, background=bgCol)
-    border1.grid(row=0,column=0)
-
-    border2 = Frame(root, width = 40, height = 40, background=bgCol)
-    border2.grid(row=500,column=500)
-
-    component_split = Frame(root, width = 1000, height = 40, background=bgCol)
+    component_split = Frame(root_frame, width = 50, height = 40, background=bgCol)
     component_split.grid(row=500,column=2)
 
     # details frame
-    details_frame = Frame(root, bg=bgCol)
-    details_frame.grid(row=1, column=2)
+    details_frame = Frame(root_frame, bg=bgCol)
+    details_frame.grid(row=1, column=3)
 
-    details_split = Frame(details_frame, width = 40, height = 40, background=bgCol)
+    details_split = Frame(details_frame, width = 40, height = 0, background=bgCol)
     details_split.grid(row=500,column=2)
 
     text_boxes = []
@@ -172,7 +147,7 @@ if __name__ == "__main__":
         label.configure(foreground=textCol, background=bgCol)
         label.grid(row = 3 * math.floor(i/2), column = 3*(i - 2*math.floor(i/2)) + 1)
 
-        text_box = MultiListbox(details_frame, (('State', 8), ('Term', 8), ('Voted For', 8), ('Array', 20), ('Time', 20)))
+        text_box = MultiListbox(details_frame, (('State', 7), ('Term', 7), ('Voted For', 9), ('Array', 18), ('Time', 18)))
         text_box.grid(row = 1 + 3 * math.floor(i/2), column = 3*(i - 2*math.floor(i/2)) + 1)
 
         text_boxes.append(text_box)

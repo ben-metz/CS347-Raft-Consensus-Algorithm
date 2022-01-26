@@ -1,5 +1,5 @@
-#include <iostream>       // std::cout
-#include <thread>         // std::thread
+#include <iostream>
+#include <thread>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -20,25 +20,25 @@ class Server;
 
 class Manager {
     private:
-        void init_sockets();
-        void init_servers(int updates_per_second);
-        void init_listener();
-        void listener_function(std::atomic<bool>& running);
         char* rcv_buffer;
         int* rcv_n;
         socklen_t* rcv_socklen;
         std::atomic_bool* running_;
-    
-    public:
-        Manager();
-        void initialise(int updates_per_second);
-        void send_msg(std::string msg);
-        void finish();
         int *receive_socket_fd;
         int *send_socket_fd;
         struct sockaddr_in send_addr;
         struct sockaddr_in rcv_addr;
         Server* servers;
         std::thread* listener;
+
+        void init_sockets();
+        void init_servers(int updates_per_second);
+        void init_listener();
+        void listener_function(std::atomic<bool>& running);
+    public:
+        Manager();
+        void initialise(int updates_per_second);
+        void send_msg(std::string msg);
+        void finish();
         void addSocket(int id, int* fd, struct sockaddr_in sock_addr);
 };

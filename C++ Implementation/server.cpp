@@ -12,7 +12,7 @@ void Server::initialise(int id, Manager* manager, std::atomic<bool>& running,
     unsigned long long next_time, int delay, int port, int neighbour_count){
     this -> id = id;
     this -> database = (Database*) malloc(sizeof(Database));
-    *this -> database = Database(5);
+    *this -> database = Database(DATABASE_SIZE);
     this -> manager = manager;
     this -> delay = (int*) malloc(sizeof(int));
     this -> next_time = (unsigned long long*) malloc(sizeof(unsigned long long));
@@ -49,7 +49,7 @@ void Server::server_function(std::atomic<bool>& running){
             this -> send_details();
         }
 
-        // Print received messages
+        // Print received messages to console
         *this -> rcv_n = recvfrom(*receive_socket_fd, (char *) this -> rcv_buffer, 1024, 
             MSG_WAITALL, ( struct sockaddr *) &rcv_addr,
             this -> rcv_socklen);
