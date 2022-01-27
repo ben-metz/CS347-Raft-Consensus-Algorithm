@@ -4,6 +4,30 @@ CS347 Coursework - Implementation of the Raft Consensus Algorithm
 ## Research Paper
 https://raft.github.io/raft.pdf
 
+## C++ Implementation Details
+
+This section details some of the main inner workings of the C++ code to make it easier to understand.
+
+### Server
+- The server class is essentially a sample implementation of a server that this algorithm is designed to run on. 
+- It uses a thread to run the server_function in the class, which receives messages from other servers, and also sends details to the python client (at the moment).
+- The server has its own socket that it uses to receive messages, and also has the addresses of the other servers in the neighbours array, which is used to send messages between the servers.
+- Server ID is used to determine the recipient server (stored alongside the address stuff in neighbour struct).
+
+### Manager
+- This enables communication with the Python client, and also manages initialisation of the servers.
+- Has both send and receive sockets to communicate with the Python client.
+- The send function is utilised by the servers to communicate with the client, this is synchronised between the threads with a mutex lock.
+- Port numbers for various functionality defined in the header, as well as the number of servers (limit of 6 at the moment).
+
+### Database
+- This is the database that is instantiated on the servers, at the moment, it is an array of 5 integers. This can be expanded later.
+
+## Python Interface Details
+- Has send and receive sockets, like the manager class in the C++ implementation, to communicate with the C++ code.
+- Has a thread that listens for packets, and the main thread runs the tkinter interface and sends input commands.
+- The Input section takes an index and value, which will eventually be used to update the values of the databases with the algorithm (command is printed to console in the C++ code at the moment)
+
 ## ESP Network Plan
 <img src="https://user-images.githubusercontent.com/47477832/149416954-9d44d517-6ec0-499b-bb36-600a9a042169.png" width="400">
 
