@@ -4,6 +4,15 @@ CS347 Coursework - Implementation of the Raft Consensus Algorithm
 ## Research Paper
 https://raft.github.io/raft.pdf
 
+## Running instructions (Linux is easiest because g++)
+### Terminal 1
+```python3 udp_server.py```
+
+### Terminal 2
+```make -B```
+
+```./manager```
+
 ## C++ Implementation Details
 
 This section details some of the main inner workings of the C++ code to make it easier to understand.
