@@ -37,6 +37,7 @@ class Server {
         int* delay; // Delay between update messages
         void send_details();
         void sendToServer(int id, std::string msg);
+        void handleMessage(char* msg);
 
     public:
         Server();
@@ -47,4 +48,5 @@ class Server {
         void initSocket(int port);
         void addSocket(int neighbour_id, int* fd, struct sockaddr_in addr);
         void addToNeighbours();
+        struct neighbour* getSocket();
 };

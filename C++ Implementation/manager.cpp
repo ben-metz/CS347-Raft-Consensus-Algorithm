@@ -9,6 +9,8 @@ void Manager::initialise(int updates_per_second){
     this -> running_ = (std::atomic_bool*) malloc(sizeof(std::atomic_bool));
     *this -> running_ = true;
 
+    this -> server_addresses = (struct neighbour*) malloc(sizeof(struct neighbour) * SERVER_COUNT);
+
     this -> init_sockets();
 
     this -> init_listener();
@@ -67,8 +69,42 @@ void Manager::listener_function(std::atomic<bool>& running){
         if (*this -> rcv_n != -1){
             this -> rcv_buffer[*this -> rcv_n] = '\0';
 
-            std::cout << this -> rcv_buffer << '\n';
+            //std::cout << this -> rcv_buffer << '\n';
+
+            this -> handle_message(this -> rcv_buffer, *this -> rcv_n + 1);
         }
+    }
+}
+
+// Handles messages received from the Python client
+void Manager::handle_message(char* msg, int len){
+    
+    char* token_buff = (char*) malloc(sizeof(char) * len);
+    memcpy(token_buff, msg, len);
+
+    char* token = strtok(token_buff, " ");
+
+    if (*token == 'U'){
+        token = strtok(NULL, " ");
+        this -> send_to_server(atoi(token), msg, len);
+    }
+
+    free(token_buff);
+}
+
+// Sends a message to the server specified by the id
+void Manager::send_to_server(int id, char* msg, int len){
+    sendto(*(this -> server_addresses[id].fd), (const char *) msg, len,
+            MSG_CONFIRM, (const struct sockaddr *) &(this -> server_addresses[id].addr), 
+                sizeof(this -> server_addresses[id].addr));
+}
+
+// Sends a message to all servers
+void Manager::send_to_all_servers(char* msg, int len){
+    for (int i = 0; i < SERVER_COUNT; i++){
+        sendto(*(this -> server_addresses[i].fd), (const char *) msg, len,
+                MSG_CONFIRM, (const struct sockaddr *) &(this -> server_addresses[i].addr), 
+                    sizeof(this -> server_addresses[i].addr));
     }
 }
 
@@ -100,6 +136,7 @@ void Manager::init_servers(int updates_per_second){
         this -> servers[i].initialise(i, this, std::ref(*this -> running_), 
             ms + i * ((1000/updates_per_second)/SERVER_COUNT), 
             1000/updates_per_second, SERVER_START_PORT + i, SERVER_COUNT - 1);
+        this -> server_addresses[i] = *this -> servers[i].getSocket();
     }
 
     // Share the sockets to all servers

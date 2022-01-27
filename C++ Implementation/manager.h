@@ -35,6 +35,12 @@ class Manager {
         void init_servers(int updates_per_second);
         void init_listener();
         void listener_function(std::atomic<bool>& running);
+
+        void handle_message(char* msg, int len);
+        void send_to_all_servers(char* msg, int len);
+        void send_to_server(int id, char* msg, int len);
+        struct neighbour* server_addresses;
+        void update_server_value(int* update_properties);
     public:
         Manager();
         void initialise(int updates_per_second);

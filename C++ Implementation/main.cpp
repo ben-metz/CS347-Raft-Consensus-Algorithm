@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <signal.h>
 
-#define MESSAGES_PER_SECOND 2
+#define MESSAGES_PER_SECOND 4
 
 Manager *manager;
 

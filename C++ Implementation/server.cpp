@@ -58,7 +58,28 @@ void Server::server_function(std::atomic<bool>& running){
             this -> rcv_buffer[*this -> rcv_n] = '\0';
 
             std::cout << "Server " << this -> getID() << " Received Message: " << this -> rcv_buffer << '\n';
+
+            this -> handleMessage(rcv_buffer);
         }
+    }
+}
+
+// Handles messages received on the receive socket
+void Server::handleMessage(char* msg){
+    char* token = strtok(msg, " ");
+    if (*token == 'U'){
+        token = strtok(NULL, " "); // Get rid of server ID
+
+        int* update_properties = (int*) malloc(sizeof(int) * 2);
+        int i = 0;
+        while (token = strtok(NULL, " ")){
+            update_properties[i] = atoi(token);
+            i++;
+        }
+        
+        this -> database -> set_value(update_properties[0], update_properties[1]);
+
+        free(update_properties);
     }
 }
 
@@ -158,5 +179,14 @@ void Server::sendToServer(int id, std::string msg){
                     sizeof(this -> neighbours[i].addr));
         }
     }
+}
+
+// Returns the servers receiving socket in a neighbour struct
+struct neighbour* Server::getSocket(){
+    struct neighbour* socket = (struct neighbour*) malloc(sizeof(struct neighbour));
+    socket -> neighbour_id = this -> getID();
+    socket -> fd = this -> receive_socket_fd;
+    socket -> addr = this -> rcv_addr;
+    return socket;
 }
 
