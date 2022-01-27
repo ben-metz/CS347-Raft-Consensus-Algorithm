@@ -26,7 +26,7 @@ This section details some of the main inner workings of the C++ code to make it 
 ## Python Interface Details
 - Has send and receive sockets, like the manager class in the C++ implementation, to communicate with the C++ code.
 - Has a thread that listens for packets, and the main thread runs the tkinter interface and sends input commands.
-- The Input section takes an index and value, which will eventually be used to update the values of the databases with the algorithm (command is printed to console in the C++ code at the moment)
+- The Input section takes an server ID, index and value, which can now update the databases of the servers (over sockets).
 
 ## ESP Network Plan
 <img src="https://user-images.githubusercontent.com/47477832/149416954-9d44d517-6ec0-499b-bb36-600a9a042169.png" width="400">
