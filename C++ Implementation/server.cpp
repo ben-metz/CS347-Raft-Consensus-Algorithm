@@ -1,8 +1,11 @@
 #include "server.h"
 #include "manager.h"
 #include "database.h"
+#include <algorithm> 
 
 std::mutex mtx;
+
+std::mutex socket_mutex[6];
 
 // Server initialiser
 Server::Server(){}
@@ -170,7 +173,7 @@ void Server::addSocket(struct server_socket_address* addr){
 
     *this -> server_address_added += 1;
 
-    std::string msg = "hello server " + std::to_string(addr -> server_socket_address_id) + " from " + std::to_string(this -> getID());
+    std::string msg = "Comms check: " + std::to_string(this -> getID()) + " -> " + std::to_string(addr -> server_socket_address_id);
 
     this -> sendToServer(addr -> server_socket_address_id, msg);
 }  
@@ -178,9 +181,14 @@ void Server::addSocket(struct server_socket_address* addr){
 // Sends message to the server with the specified ID
 void Server::sendToServer(int id, std::string msg){
     int sock_id = this -> getSocketIndex(id);
+    
+    while(socket_mutex[id].try_lock());
+
     sendto(*(this -> neighbours[sock_id] -> fd), (const char *) msg.c_str(), strlen(msg.c_str()),
         MSG_CONFIRM, (const struct sockaddr *) &(this -> neighbours[sock_id] -> addr), 
             sizeof(this -> neighbours[sock_id] -> addr));
+
+    socket_mutex[id].unlock();
 }
 
 // Get index of socket in neighbours for server with passed ID
@@ -196,4 +204,3 @@ int Server::getSocketIndex(int server_id){
 struct server_socket_address* Server::getSocket(){
     return this -> socket_addr;
 }
-
