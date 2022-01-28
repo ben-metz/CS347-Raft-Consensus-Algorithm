@@ -25,7 +25,6 @@ class Manager {
         char* rcv_buffer;
         int* rcv_n;
         socklen_t* rcv_socklen;
-        std::atomic_bool* running_;
         int *receive_socket_fd;
         int *send_socket_fd;
         struct sockaddr_in send_addr;
@@ -36,7 +35,7 @@ class Manager {
         void init_sockets();
         void init_servers(int updates_per_second);
         void init_listener();
-        void listener_function(std::atomic<bool>& running);
+        void listener_function();
 
         void handle_message(char* msg, int len);
         void send_to_all_servers(char* msg, int len);

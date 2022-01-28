@@ -1,14 +1,13 @@
 #include "manager.h"
 #include "server.h"
 
+std::atomic_bool running_(true);
+
 // Manager constructor, define socket and servers
 Manager::Manager(){}
 
 // Initialise all components of the manager
 void Manager::initialise(int updates_per_second){
-    this -> running_ = (std::atomic_bool*) malloc(sizeof(std::atomic_bool));
-    *this -> running_ = true;
-
     this -> server_addresses = (struct server_socket_address*) malloc(sizeof(struct server_socket_address) * SERVER_COUNT);
 
     this -> init_sockets();
@@ -56,12 +55,12 @@ void Manager::init_sockets(){
 }
 
 // Function that listens to the receive socket
-void Manager::listener_function(std::atomic<bool>& running){
+void Manager::listener_function(){
     int flags = fcntl(*receive_socket_fd, F_GETFL);
     flags |= O_NONBLOCK;
     fcntl(*receive_socket_fd, F_SETFL, flags);
 
-    while(running){
+    while(running_){
         *this -> rcv_n = recvfrom(*receive_socket_fd, (char *) this -> rcv_buffer, 1024, 
             MSG_WAITALL, ( struct sockaddr *) &rcv_addr,
             this -> rcv_socklen);
@@ -114,7 +113,7 @@ void Manager::init_listener(){
     *this -> rcv_socklen = sizeof(this -> rcv_addr);
 
     this -> listener = (std::thread*) malloc(sizeof(std::thread));
-    *this -> listener = std::thread(&Manager::listener_function, this, std::ref(*this -> running_)); 
+    *this -> listener = std::thread(&Manager::listener_function, this); 
 }
 
 // Initialise the servers
@@ -131,7 +130,7 @@ void Manager::init_servers(int updates_per_second){
 
     // Allocate memory, start thread, etc
     for(int i = 0; i < SERVER_COUNT; i++){
-        this -> servers[i].initialise(i, this, std::ref(*this -> running_), 
+        this -> servers[i].initialise(i, this, 
             ms + i * ((1000/updates_per_second)/SERVER_COUNT), 
             1000/updates_per_second, SERVER_START_PORT + i, SERVER_COUNT - 1);
         this -> server_addresses[i] = *this -> servers[i].getSocket();
@@ -145,7 +144,7 @@ void Manager::init_servers(int updates_per_second){
 
 // When completed, join server threads and free stuff (not everything freed yet, bug fixing :( )
 void Manager::finish(){
-    *this -> running_ = false;
+    running_ = false;
 
     this -> listener -> join();
     std::cout << "Joined Python Listener Thread\n";
@@ -172,8 +171,6 @@ void Manager::finish(){
     free(this -> rcv_socklen);
 
     free(this -> server_addresses);
-
-    free(this -> running_);
 }
 
 // Sends a message back to the client

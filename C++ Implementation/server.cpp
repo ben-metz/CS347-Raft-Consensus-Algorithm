@@ -6,11 +6,13 @@ std::mutex mtx;
 
 std::mutex socket_mutex[SERVER_COUNT];
 
+extern std::atomic_bool running_;
+
 // Server initialiser
 Server::Server(){}
 
 // Initialise the variables used by the server
-void Server::initialise(int id, Manager* manager, std::atomic<bool>& running, 
+void Server::initialise(int id, Manager* manager, 
     unsigned long long next_time, int delay, int port, int server_socket_address_count){
     this -> id = id;
     this -> database = (Database*) malloc(sizeof(Database));
@@ -30,7 +32,7 @@ void Server::initialise(int id, Manager* manager, std::atomic<bool>& running,
 
     this -> initSocket(port);
 
-    this -> initThread(running);
+    this -> initThread();
 }
 
 // Join the thread and close the receive socket
@@ -62,14 +64,14 @@ void Server::join(){
 // Function to be performed by the server
 // This thread will take messages sent by other servers,
 // feed them into the algorithm, and reply/send to other servers
-void Server::server_function(std::atomic<bool>& running){
+void Server::server_function(){
     using namespace std::chrono;
 
     int flags = fcntl(*this -> socket_addr -> fd, F_GETFL);
     flags |= O_NONBLOCK;
     fcntl(*this -> socket_addr -> fd, F_SETFL, flags);
 
-    while(running){
+    while(running_){
         // Send details every so often
         unsigned long long ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
         if (ms >= *this -> next_time){
@@ -128,9 +130,9 @@ void Server::send_details(){
 }
 
 // Initialise the thread with the thread function
-void Server::initThread(std::atomic<bool>& running){
+void Server::initThread(){
     this -> thread = (std::thread*) malloc(sizeof(std::thread));
-    *this -> thread = std::thread(&Server::server_function, this, std::ref(running)); 
+    *this -> thread = std::thread(&Server::server_function, this); 
 }
 
 // Initialise the listening socket

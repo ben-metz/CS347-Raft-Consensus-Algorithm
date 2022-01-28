@@ -21,8 +21,8 @@ struct server_socket_address {
 class Server {
     private:
         int id;
-        void server_function(std::atomic<bool>& running);
-        void initThread(std::atomic<bool>& running);
+        void server_function();
+        void initThread();
         Manager* manager;
         char* rcv_buffer;
         int* rcv_n;
@@ -44,7 +44,7 @@ class Server {
         Server();
         int getID();
         void join();
-        void initialise(int id, Manager* manager, std::atomic<bool>& running, 
+        void initialise(int id, Manager* manager,
             unsigned long long next_time, int delay, int port, int server_socket_address_count);
         void initSocket(int port);
         void addSocket(struct server_socket_address* addr);
