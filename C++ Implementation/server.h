@@ -29,6 +29,7 @@ class Server {
         socklen_t* rcv_socklen;
         struct server_socket_address** neighbours;
         int* server_address_added;
+        int getSocketIndex(int server_id);
 
         struct server_socket_address* socket_addr;
         std::thread* thread;

@@ -177,12 +177,18 @@ void Server::addSocket(struct server_socket_address* addr){
 
 // Sends message to the server with the specified ID
 void Server::sendToServer(int id, std::string msg){
-    for (int i = 0; i < *this -> server_address_added; i++){
-        if (this -> neighbours[i] -> server_socket_address_id == id){
-            sendto(*(this -> neighbours[i] -> fd), (const char *) msg.c_str(), strlen(msg.c_str()),
-                MSG_CONFIRM, (const struct sockaddr *) &(this -> neighbours[i] -> addr), 
-                    sizeof(this -> neighbours[i] -> addr));
-        }
+    int sock_id = this -> getSocketIndex(id);
+    sendto(*(this -> neighbours[sock_id] -> fd), (const char *) msg.c_str(), strlen(msg.c_str()),
+        MSG_CONFIRM, (const struct sockaddr *) &(this -> neighbours[sock_id] -> addr), 
+            sizeof(this -> neighbours[sock_id] -> addr));
+}
+
+// Get index of socket in neighbours for server with passed ID
+int Server::getSocketIndex(int server_id){
+    if (server_id > this -> getID()){
+        return server_id - 1;
+    } else {
+        return server_id;
     }
 }
 
