@@ -9,7 +9,7 @@ void Manager::initialise(int updates_per_second){
     this -> running_ = (std::atomic_bool*) malloc(sizeof(std::atomic_bool));
     *this -> running_ = true;
 
-    this -> server_addresses = (struct neighbour*) malloc(sizeof(struct neighbour) * SERVER_COUNT);
+    this -> server_addresses = (struct server_socket_address*) malloc(sizeof(struct server_socket_address) * SERVER_COUNT);
 
     this -> init_sockets();
 
@@ -182,11 +182,11 @@ void Manager::send_msg(std::string msg)
             sizeof(this -> send_addr));
 }
 
-// Add socket to neighbour arrays for all servers except server with passed id
-void Manager::addSocket(int id, int* fd, struct sockaddr_in addr){
+// Add socket to server_socket_address arrays for all servers except server with passed id
+void Manager::addSocket(struct server_socket_address* addr){
     for (int i = 0; i < SERVER_COUNT; i++){
-        if (i != id){
-            servers[i].addSocket(id, fd, addr);
+        if (i != addr -> server_socket_address_id){
+            servers[i].addSocket(addr);
         }
     }
 }

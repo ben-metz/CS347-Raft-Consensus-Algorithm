@@ -9,7 +9,7 @@ Server::Server(){}
 
 // Initialise the variables used by the server
 void Server::initialise(int id, Manager* manager, std::atomic<bool>& running, 
-    unsigned long long next_time, int delay, int port, int neighbour_count){
+    unsigned long long next_time, int delay, int port, int server_socket_address_count){
     this -> id = id;
     this -> database = (Database*) malloc(sizeof(Database));
     *this -> database = Database(DATABASE_SIZE);
@@ -17,17 +17,18 @@ void Server::initialise(int id, Manager* manager, std::atomic<bool>& running,
     this -> delay = (int*) malloc(sizeof(int));
     this -> next_time = (unsigned long long*) malloc(sizeof(unsigned long long));
 
-    this -> neighbours_added = (int*) malloc(sizeof(int));
-    *this -> neighbours_added = 0;
+    this -> server_address_added = (int*) malloc(sizeof(int));
+    *this -> server_address_added = 0;
 
     *this -> delay = delay;
     *this -> next_time = next_time;
 
-    this -> neighbours = (struct neighbour*) malloc(sizeof(struct neighbour) * neighbour_count);
-
-    this -> initThread(running);
+    this -> socket_addr = (struct server_socket_address*) malloc(sizeof(struct server_socket_address));
+    this -> neighbours = (struct server_socket_address**) malloc(sizeof(struct server_socket_address*) * server_socket_address_count);
 
     this -> initSocket(port);
+
+    this -> initThread(running);
 }
 
 // Function to be performed by the server
@@ -36,9 +37,9 @@ void Server::initialise(int id, Manager* manager, std::atomic<bool>& running,
 void Server::server_function(std::atomic<bool>& running){
     using namespace std::chrono;
 
-    int flags = fcntl(*receive_socket_fd, F_GETFL);
+    int flags = fcntl(*this -> socket_addr -> fd, F_GETFL);
     flags |= O_NONBLOCK;
-    fcntl(*receive_socket_fd, F_SETFL, flags);
+    fcntl(*this -> socket_addr -> fd, F_SETFL, flags);
 
     while(running){
         // Send details every so often
@@ -50,8 +51,8 @@ void Server::server_function(std::atomic<bool>& running){
         }
 
         // Print received messages to console
-        *this -> rcv_n = recvfrom(*receive_socket_fd, (char *) this -> rcv_buffer, 1024, 
-            MSG_WAITALL, ( struct sockaddr *) &rcv_addr,
+        *this -> rcv_n = recvfrom(*this -> socket_addr -> fd, (char *) this -> rcv_buffer, 1024, 
+            MSG_WAITALL, ( struct sockaddr *) &this -> socket_addr -> addr,
             this -> rcv_socklen);
 
         if (*this -> rcv_n != -1){
@@ -106,36 +107,42 @@ void Server::initThread(std::atomic<bool>& running){
 
 // Initialise the listening socket
 void Server::initSocket(int port){
+    struct sockaddr_in rcv_addr;
+
     this -> rcv_buffer = (char*) malloc(sizeof(char) * 1024);
     this -> rcv_n = (int*) malloc(sizeof(int));
     this -> rcv_socklen = (socklen_t*) malloc(sizeof(socklen_t));
-    *this -> rcv_socklen = sizeof(this -> rcv_addr);
-    this -> receive_socket_fd = (int*) malloc(sizeof(int));
+    *this -> rcv_socklen = sizeof(rcv_addr);
+    int* receive_socket_fd = (int*) malloc(sizeof(int));
 
     // Creating socket file descriptor
-    if ( (*(this -> receive_socket_fd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+    if ( (*receive_socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
         perror("Receive socket creation failed");
         exit(EXIT_FAILURE);
     }
 
     // Filling server information
-    this -> rcv_addr.sin_family = AF_INET;
-    this -> rcv_addr.sin_port = htons(port);
-    this -> rcv_addr.sin_addr.s_addr = INADDR_ANY;
+    rcv_addr.sin_family = AF_INET;
+    rcv_addr.sin_port = htons(port);
+    rcv_addr.sin_addr.s_addr = INADDR_ANY;
 
     // Bind the socket with the server address
-    if ( bind(*this -> receive_socket_fd, 
-            (const struct sockaddr *) &this -> rcv_addr, 
-            sizeof(this -> rcv_addr)) < 0 )
+    if ( bind(*receive_socket_fd, 
+            (const struct sockaddr *) &rcv_addr, 
+            sizeof(rcv_addr)) < 0 )
     {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
+
+    this -> socket_addr -> server_socket_address_id = this -> getID();
+    this -> socket_addr -> fd = receive_socket_fd;
+    this -> socket_addr -> addr = rcv_addr;
 }
 
-// Adds this socket to the neighbours of the other servers
+// Adds this socket to the server_socket_addresss of the other servers
 void Server::addToNeighbours(){
-    this -> manager -> addSocket(this -> getID(), this -> receive_socket_fd, this -> rcv_addr);
+    this -> manager -> addSocket(this -> socket_addr);
 }
 
 // Return the ID of server
@@ -148,45 +155,39 @@ void Server::join(){
     this -> thread -> join();
 
     std::cout << "Closing Server " << this -> getID() << " Socket and Freeing Memory..." << "\n";
-    close(*(this -> receive_socket_fd));
+    close(*(this -> socket_addr -> fd));
 
-    free(this -> receive_socket_fd);
+    free(this -> socket_addr -> fd);
 
     free(this -> rcv_buffer);
     free(this -> rcv_n);
     free(this -> rcv_socklen);
 }
 
-// Adds a socket to the neighbours array of the server
-void Server::addSocket(int neighbour_id, int* fd, struct sockaddr_in addr){
-    this -> neighbours[*this -> neighbours_added].neighbour_id = neighbour_id;
-    this -> neighbours[*this -> neighbours_added].fd = fd;
-    this -> neighbours[*this -> neighbours_added].addr = addr;
+// Adds a socket to the server_socket_addresss array of the server
+void Server::addSocket(struct server_socket_address* addr){
+    this -> neighbours[*this -> server_address_added] = addr;
 
-    *this -> neighbours_added += 1;
+    *this -> server_address_added += 1;
 
-    std::string msg = "hello server " + std::to_string(neighbour_id) + " from " + std::to_string(this -> getID());
+    std::string msg = "hello server " + std::to_string(addr -> server_socket_address_id) + " from " + std::to_string(this -> getID());
 
-    this -> sendToServer(neighbour_id, msg);
+    this -> sendToServer(addr -> server_socket_address_id, msg);
 }  
 
 // Sends message to the server with the specified ID
 void Server::sendToServer(int id, std::string msg){
-    for (int i = 0; i < *this -> neighbours_added; i++){
-        if (this -> neighbours[i].neighbour_id == id){
-            sendto(*(this -> neighbours[i].fd), (const char *) msg.c_str(), strlen(msg.c_str()),
-                MSG_CONFIRM, (const struct sockaddr *) &(this -> neighbours[i].addr), 
-                    sizeof(this -> neighbours[i].addr));
+    for (int i = 0; i < *this -> server_address_added; i++){
+        if (this -> neighbours[i] -> server_socket_address_id == id){
+            sendto(*(this -> neighbours[i] -> fd), (const char *) msg.c_str(), strlen(msg.c_str()),
+                MSG_CONFIRM, (const struct sockaddr *) &(this -> neighbours[i] -> addr), 
+                    sizeof(this -> neighbours[i] -> addr));
         }
     }
 }
 
-// Returns the servers receiving socket in a neighbour struct
-struct neighbour* Server::getSocket(){
-    struct neighbour* socket = (struct neighbour*) malloc(sizeof(struct neighbour));
-    socket -> neighbour_id = this -> getID();
-    socket -> fd = this -> receive_socket_fd;
-    socket -> addr = this -> rcv_addr;
-    return socket;
+// Returns the servers receiving socket in a server_socket_address struct
+struct server_socket_address* Server::getSocket(){
+    return this -> socket_addr;
 }
 

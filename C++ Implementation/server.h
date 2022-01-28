@@ -11,9 +11,9 @@ class Database;
 
 class Manager;
 
-// Stores neighbour server communication details
-struct neighbour {
-    int neighbour_id;
+// Stores server_socket_address server communication details
+struct server_socket_address {
+    int server_socket_address_id;
     int* fd;
     struct sockaddr_in addr;
 };
@@ -27,10 +27,10 @@ class Server {
         char* rcv_buffer;
         int* rcv_n;
         socklen_t* rcv_socklen;
-        struct neighbour* neighbours;
-        int* neighbours_added;
-        struct sockaddr_in rcv_addr;
-        int *receive_socket_fd;
+        struct server_socket_address** neighbours;
+        int* server_address_added;
+
+        struct server_socket_address* socket_addr;
         std::thread* thread;
         Database *database;
         unsigned long long* next_time;
@@ -44,9 +44,9 @@ class Server {
         int getID();
         void join();
         void initialise(int id, Manager* manager, std::atomic<bool>& running, 
-            unsigned long long next_time, int delay, int port, int neighbour_count);
+            unsigned long long next_time, int delay, int port, int server_socket_address_count);
         void initSocket(int port);
-        void addSocket(int neighbour_id, int* fd, struct sockaddr_in addr);
+        void addSocket(struct server_socket_address* addr);
         void addToNeighbours();
-        struct neighbour* getSocket();
+        struct server_socket_address* getSocket();
 };

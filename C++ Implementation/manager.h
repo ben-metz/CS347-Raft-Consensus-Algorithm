@@ -39,12 +39,12 @@ class Manager {
         void handle_message(char* msg, int len);
         void send_to_all_servers(char* msg, int len);
         void send_to_server(int id, char* msg, int len);
-        struct neighbour* server_addresses;
+        struct server_socket_address* server_addresses;
         void update_server_value(int* update_properties);
     public:
         Manager();
         void initialise(int updates_per_second);
         void send_msg(std::string msg);
         void finish();
-        void addSocket(int id, int* fd, struct sockaddr_in sock_addr);
+        void addSocket(struct server_socket_address* addr);
 };
