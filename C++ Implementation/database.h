@@ -13,4 +13,5 @@ class Database {
     int* get_size();
     int* get_data();
     void set_value(int index, int value);
+    bool verify(int index, int value);
 };

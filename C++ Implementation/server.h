@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include "raft.h"
 
 #define DATABASE_SIZE 5
 
@@ -39,6 +40,9 @@ class Server {
         void send_details();
         void sendToServer(int id, std::string msg);
         void handleMessage(char* msg);
+
+        Raft_Node* raft;
+        char* raft_response;
 
     public:
         Server();

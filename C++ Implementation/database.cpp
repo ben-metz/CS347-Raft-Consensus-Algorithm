@@ -36,3 +36,10 @@ int Database::get_value(int index) {
   this->validate_index(index);
   return this->data[index];
 }
+
+bool Database::verify(int index, int value){
+  if (this -> data[index] == value){
+    return true;
+  }
+  return false;
+}

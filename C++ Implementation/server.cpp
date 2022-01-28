@@ -30,6 +30,11 @@ void Server::initialise(int id, Manager* manager,
     this -> socket_addr = (struct server_socket_address*) malloc(sizeof(struct server_socket_address));
     this -> neighbours = (struct server_socket_address**) malloc(sizeof(struct server_socket_address*) * server_socket_address_count);
 
+    this -> raft = (Raft_Node*) malloc(sizeof(Raft_Node));
+    *this -> raft = Raft_Node();
+
+    raft_response = (char*) malloc(sizeof(char) * 250);
+
     this -> initSocket(port);
 
     this -> initThread();
@@ -59,6 +64,9 @@ void Server::join(){
     free(this -> database -> get_size());
     free(this -> database -> get_data());
     free(this -> database);
+
+    free(raft);
+    free(raft_response);
 }
 
 // Function to be performed by the server
@@ -97,6 +105,10 @@ void Server::server_function(){
 
 // Handles messages received on the receive socket
 void Server::handleMessage(char* msg){
+    raft -> input_message(msg,this -> raft_response);
+
+    // Would send contents of raft response to appropriate server
+
     char* token = strtok(msg, " ");
     if (*token == 'U'){
         token = strtok(NULL, " "); // Get rid of server ID
@@ -112,6 +124,8 @@ void Server::handleMessage(char* msg){
 
         free(update_properties);
     }
+
+    
 }
 
 // Function to send details to python client
