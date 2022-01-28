@@ -1,11 +1,10 @@
 #include "server.h"
 #include "manager.h"
 #include "database.h"
-#include <algorithm> 
 
 std::mutex mtx;
 
-std::mutex socket_mutex[6];
+std::mutex socket_mutex[SERVER_COUNT];
 
 // Server initialiser
 Server::Server(){}
