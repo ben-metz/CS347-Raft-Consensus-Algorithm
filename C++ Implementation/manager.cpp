@@ -69,8 +69,6 @@ void Manager::listener_function(std::atomic<bool>& running){
         if (*this -> rcv_n != -1){
             this -> rcv_buffer[*this -> rcv_n] = '\0';
 
-            //std::cout << this -> rcv_buffer << '\n';
-
             this -> handle_message(this -> rcv_buffer, *this -> rcv_n + 1);
         }
     }
@@ -149,13 +147,13 @@ void Manager::init_servers(int updates_per_second){
 void Manager::finish(){
     *this -> running_ = false;
 
+    this -> listener -> join();
+    std::cout << "Joined Python Listener Thread\n";
+
     for(int i = 0; i < SERVER_COUNT; i++){
         this -> servers[i].join();
         std::cout << "Joined Server " << i << " Thread\n";
     }
-
-    this -> listener -> join();
-    std::cout << "Joined Python Listener Thread\n";
 
     free(this -> listener);
     free(this -> servers);
@@ -172,6 +170,10 @@ void Manager::finish(){
     free(this -> rcv_buffer);
     free(this -> rcv_n);
     free(this -> rcv_socklen);
+
+    free(this -> server_addresses);
+
+    free(this -> running_);
 }
 
 // Sends a message back to the client

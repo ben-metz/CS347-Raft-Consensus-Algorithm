@@ -33,6 +33,32 @@ void Server::initialise(int id, Manager* manager, std::atomic<bool>& running,
     this -> initThread(running);
 }
 
+// Join the thread and close the receive socket
+void Server::join(){
+    this -> thread -> join();
+
+    std::cout << "Closing Server " << this -> getID() << " Socket and Freeing Memory..." << "\n";
+    close(*(this -> socket_addr -> fd));
+
+    free(this -> socket_addr -> fd);
+
+    free(this -> rcv_buffer);
+    free(this -> rcv_n);
+    free(this -> rcv_socklen);
+
+    free(this -> neighbours);
+    free(this -> socket_addr);
+    free(this -> next_time);
+    free(this -> server_address_added);
+
+    free(this -> delay);
+    free(this -> thread);
+
+    free(this -> database -> get_size());
+    free(this -> database -> get_data());
+    free(this -> database);
+}
+
 // Function to be performed by the server
 // This thread will take messages sent by other servers,
 // feed them into the algorithm, and reply/send to other servers
@@ -92,7 +118,7 @@ void Server::send_details(){
 
     ss << this -> getID() << ":";
 
-    for (int i = 0; i < database -> get_size(); i++){
+    for (int i = 0; i < *database -> get_size(); i++){
         ss << this -> database -> get_value(i) << ' ';
     }
 
@@ -150,20 +176,6 @@ void Server::addToNeighbours(){
 // Return the ID of server
 int Server::getID(){
     return this->id;
-}
-
-// Join the thread and close the receive socket
-void Server::join(){
-    this -> thread -> join();
-
-    std::cout << "Closing Server " << this -> getID() << " Socket and Freeing Memory..." << "\n";
-    close(*(this -> socket_addr -> fd));
-
-    free(this -> socket_addr -> fd);
-
-    free(this -> rcv_buffer);
-    free(this -> rcv_n);
-    free(this -> rcv_socklen);
 }
 
 // Adds a socket to the server_socket_addresss array of the server

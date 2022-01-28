@@ -28,8 +28,8 @@ int* Database::get_data() {
   return this->data;
 }
 
-int Database::get_size() {
-  return *this->size;
+int* Database::get_size() {
+  return this->size;
 }
 
 int Database::get_value(int index) {

@@ -12,6 +12,8 @@ void signal_callback_handler(int signum) {
 
    manager -> finish();
 
+   free(manager);
+
    // Terminate program
    exit(signum);
 }
