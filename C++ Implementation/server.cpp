@@ -75,18 +75,18 @@ void Server::join(){
 void Server::server_function(){
     using namespace std::chrono;
 
-    int flags = fcntl(*this -> socket_addr -> fd, F_GETFL);
-    flags |= O_NONBLOCK;
-    fcntl(*this -> socket_addr -> fd, F_SETFL, flags);
+    // int flags = fcntl(*this -> socket_addr -> fd, F_GETFL);
+    // flags |= O_NONBLOCK;
+    // fcntl(*this -> socket_addr -> fd, F_SETFL, flags);
 
     while(running_){
         // Send details every so often
-        unsigned long long ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-        if (ms >= *this -> next_time){
-            *this -> next_time = ms + *this -> delay;
+        // unsigned long long ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+        // if (ms >= *this -> next_time){
+        //     *this -> next_time = ms + *this -> delay;
             
-            this -> send_details();
-        }
+        //     this -> send_details();
+        // }
 
         // Print received messages to console
         *this -> rcv_n = recvfrom(*this -> socket_addr -> fd, (char *) this -> rcv_buffer, 1024, 
@@ -99,6 +99,8 @@ void Server::server_function(){
             std::cout << "Server " << this -> getID() << " Received Message: " << this -> rcv_buffer << '\n';
 
             this -> handleMessage(rcv_buffer);
+
+            this -> send_details();
         }
     }
 }
@@ -124,8 +126,6 @@ void Server::handleMessage(char* msg){
 
         free(update_properties);
     }
-
-    
 }
 
 // Function to send details to python client

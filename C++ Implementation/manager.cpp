@@ -70,6 +70,8 @@ void Manager::listener_function(){
 
             this -> handle_message(this -> rcv_buffer, *this -> rcv_n + 1);
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
@@ -148,6 +150,9 @@ void Manager::finish(){
 
     this -> listener -> join();
     std::cout << "Joined Python Listener Thread\n";
+
+    std::string kill = "kill";
+    this -> send_to_all_servers((char*) kill.c_str(), 5);
 
     for(int i = 0; i < SERVER_COUNT; i++){
         this -> servers[i].join();
