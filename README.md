@@ -15,6 +15,10 @@ https://raft.github.io/raft.pdf
 
 ## C++ Implementation Details
 
+### JSON Library
+
+https://github.com/open-source-parsers/jsoncpp
+
 This section details some of the main inner workings of the C++ code to make it easier to understand.
 
 ### Server
