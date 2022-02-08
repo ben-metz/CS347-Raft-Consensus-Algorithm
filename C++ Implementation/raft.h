@@ -10,6 +10,8 @@ class Raft_Node{
         int random_timeout;
         long* time_of_last_message;
 
+        int leader_id;
+
     public:
         Raft_Node();
         void input_message(char* msg, char* output_buffer);

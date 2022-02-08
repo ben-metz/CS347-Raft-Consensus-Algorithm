@@ -1,8 +1,10 @@
 #include "raft.h"
 #include <iostream>
 #include <chrono>
+#include "json.hpp"
 
 Raft_Node::Raft_Node(){
+    this -> leader_id = -1; // -1 if no leader or leader, id of leader otherwise
     this -> state = 0;
     this -> time_of_last_message = (long*) malloc(sizeof(long));
     this -> random_timeout = getRandomTimeout();
