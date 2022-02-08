@@ -132,9 +132,7 @@ void Manager::init_servers(int updates_per_second){
 
     // Allocate memory, start thread, etc
     for(int i = 0; i < SERVER_COUNT; i++){
-        this -> servers[i].initialise(i, this, 
-            ms + i * ((1000/updates_per_second)/SERVER_COUNT), 
-            1000/updates_per_second, SERVER_START_PORT + i, SERVER_COUNT - 1);
+        this -> servers[i].initialise(i, this, SERVER_START_PORT + i, SERVER_COUNT - 1);
         this -> server_addresses[i] = *this -> servers[i].getSocket();
     }
 

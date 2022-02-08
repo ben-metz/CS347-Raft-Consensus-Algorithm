@@ -35,8 +35,7 @@ class Server {
         struct server_socket_address* socket_addr;
         std::thread* thread;
         Database *database;
-        unsigned long long* next_time;
-        int* delay; // Delay between update messages
+
         void send_details();
         void sendToServer(int id, std::string msg);
         void handleMessage(char* msg);
@@ -44,14 +43,18 @@ class Server {
         Raft_Node* raft;
         char* raft_response;
 
+        int neighbour_count = 0;
+        int expected_neighbours = 5;
+
     public:
         Server();
         int getID();
         void join();
         void initialise(int id, Manager* manager,
-            unsigned long long next_time, int delay, int port, int server_socket_address_count);
+            int port, int server_socket_address_count);
         void initSocket(int port);
         void addSocket(struct server_socket_address* addr);
         void addToNeighbours();
         struct server_socket_address* getSocket();
+        void sendToAllServers(std::string msg);
 };
