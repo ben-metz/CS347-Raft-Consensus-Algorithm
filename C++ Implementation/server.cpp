@@ -75,9 +75,9 @@ void Server::join(){
 void Server::server_function(){
     using namespace std::chrono;
 
-    // int flags = fcntl(*this -> socket_addr -> fd, F_GETFL);
-    // flags |= O_NONBLOCK;
-    // fcntl(*this -> socket_addr -> fd, F_SETFL, flags);
+    int flags = fcntl(*this -> socket_addr -> fd, F_GETFL);
+    flags |= O_NONBLOCK;
+    fcntl(*this -> socket_addr -> fd, F_SETFL, flags);
 
     while(running_){
         // Send details every so often
@@ -102,6 +102,8 @@ void Server::server_function(){
 
             this -> send_details();
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
