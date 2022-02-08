@@ -3,7 +3,9 @@
 #include <chrono>
 #include "json.hpp"
 
-Raft_Node::Raft_Node(){
+Raft_Node::Raft_Node(int id){
+    this -> candidate_id = id;
+    this -> term = 0;
     this -> leader_id = -1; // -1 if no leader or leader, id of leader otherwise
     this -> state = 0;
     this -> time_of_last_message = (long*) malloc(sizeof(long));
@@ -46,11 +48,26 @@ int Raft_Node::getRandomTimeout(){
     return 150 + rand()%150;
 }
 
+int Raft_Node::getID() {
+    return this -> candidate_id;
+}
+
+using json = nlohmann::json;
+
 // Returns the vote request message
-std::string Raft_Node::getVoteRequestMessage(){
+std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_term){
     // Reset random timeout
     this -> random_timeout = getRandomTimeout();
 
-    // Return message
-    return "gimme vote plz";
+    json vote_request_data = {
+        {"message_type", "request_vote"},
+        {"data", {
+            {"term", this -> term}, // candidate's term
+            {"candidate_id", this -> candidate_id}, // candidate requesting vote
+            {"last_log_index", last_log_index}, // index of candidate's last log entry
+            {"last_log_term", last_log_term} // term of candidate's last log entry
+        }}
+    };
+
+    return vote_request_data.dump();
 }

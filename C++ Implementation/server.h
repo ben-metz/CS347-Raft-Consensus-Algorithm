@@ -21,7 +21,6 @@ struct server_socket_address {
 
 class Server {
     private:
-        int id;
         void server_function();
         void initThread();
         Manager* manager;
