@@ -96,7 +96,7 @@ void Server::server_function()
         }
 
         // Check that the raft timer has not expired, if it has then request a vote from all servers
-        if (*this->server_address_added >= this -> expected_neighbours)
+        if (*this->server_address_added >= EXPECTED_NEIGHBOURS)
         {
             this->raft->run();
         }
@@ -231,7 +231,7 @@ void Server::sendToServer(int id, std::string msg)
 // Sends message to all of the servers
 void Server::sendToAllServers(std::string msg)
 {
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < EXPECTED_NEIGHBOURS; i++)
     {
         this->sendToServer(this->neighbours[i]->server_socket_address_id, msg);
     }

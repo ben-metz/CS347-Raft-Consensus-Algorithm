@@ -6,6 +6,7 @@
 #include <fcntl.h>
 
 #define DATABASE_SIZE 5
+#define EXPECTED_NEIGHBOURS 4
 
 class Database;
 
@@ -42,8 +43,6 @@ class Server {
 
         Raft_Node* raft;
         char* raft_response;
-
-        int expected_neighbours = 5;
 
     public:
         Server();
