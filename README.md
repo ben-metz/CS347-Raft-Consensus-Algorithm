@@ -1,10 +1,22 @@
 # CS347-Raft-Consensus-Algorithm
 CS347 Coursework - Implementation of the Raft Consensus Algorithm
 
+## Report
+https://www.overleaf.com/3783574327qqnsjvpyjtvb
+
 ## Research Paper
 https://raft.github.io/raft.pdf
 
-## Running instructions (Linux is easiest because g++)
+
+## Resources
+**In Search of an Understandable Consensus Algorithm (Extended Version)** https://raft.github.io/raft.pdf (The Main Paper)
+
+**The Implementation of Raft by the Paper Authors** https://github.com/logcabin/logcabin (specifically https://github.com/logcabin/logcabin/blob/master/Server/RaftConsensus.cc)
+
+**Paxos Made Simple** https://lamport.azurewebsites.net/pubs/paxos-simple.pdf
+
+Once you have a clear idea of what you are aiming to achieve, it is crucial that you
+position your work in relation to existing research results.## Running instructions (Linux is easiest because g++)
 ### Terminal 1 (Python Client Directory)
 ```python3 udp_server.py```
 
@@ -62,13 +74,6 @@ This section details some of the main inner workings of the C++ code to make it 
 - In a simple config with all nodes connected, one of the ESP nodes will be a leader and the others will be followers.
 - Each ESP will be loaded with the created raft library.
 - ESP-NOW used between the ESP's (changes, heartbeats, etc), there is a hard-limit of 250 byte transfers, so will need to keep communications light.
-
-## Resources
-**In Search of an Understandable Consensus Algorithm (Extended Version)** https://raft.github.io/raft.pdf (The Main Paper)
-
-**The Implementation of Raft by the Paper Authors** https://github.com/logcabin/logcabin (specifically https://github.com/logcabin/logcabin/blob/master/Server/RaftConsensus.cc)
-
-**Paxos Made Simple** https://lamport.azurewebsites.net/pubs/paxos-simple.pdf
 
 ## Useful Visualisation
 Interactive, good intro - http://thesecretlivesofdata.com/raft/
