@@ -4,13 +4,14 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <fcntl.h>
-#include "raft.h"
 
 #define DATABASE_SIZE 5
 
 class Database;
 
 class Manager;
+
+class Raft_Node;
 
 // Stores server_socket_address server communication details
 struct server_socket_address {
@@ -42,7 +43,6 @@ class Server {
         Raft_Node* raft;
         char* raft_response;
 
-        int neighbour_count = 0;
         int expected_neighbours = 5;
 
     public:

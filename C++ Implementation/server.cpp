@@ -1,6 +1,7 @@
 #include "server.h"
 #include "manager.h"
 #include "database.h"
+#include "raft.h"
 
 std::mutex mtx;
 
@@ -26,7 +27,7 @@ void Server::initialise(int id, Manager *manager,
     this->neighbours = (struct server_socket_address **)malloc(sizeof(struct server_socket_address *) * server_socket_address_count);
 
     this->raft = (Raft_Node *)malloc(sizeof(Raft_Node));
-    *this->raft = Raft_Node(id);
+    *this->raft = Raft_Node(id, SERVER_COUNT, this);
 
     raft_response = (char *)malloc(sizeof(char) * 250);
 
@@ -95,10 +96,9 @@ void Server::server_function()
         }
 
         // Check that the raft timer has not expired, if it has then request a vote from all servers
-        if (this->raft->checkTimer() && this->neighbour_count >= this -> expected_neighbours)
+        if (*this->server_address_added >= this -> expected_neighbours)
         {
-            std::cout << "REQUESTING VOTES";
-            this->sendToAllServers(this->raft->getVoteRequestMessage());
+            this->raft->run();
         }
 
         // Reduce active waiting load by sleeping for 1ms
@@ -211,12 +211,6 @@ void Server::addSocket(struct server_socket_address *addr)
     this->neighbours[*this->server_address_added] = addr;
 
     *this->server_address_added += 1;
-
-    std::string msg = "Comms check: " + std::to_string(this->getID()) + " -> " + std::to_string(addr->server_socket_address_id);
-
-    this->sendToServer(addr->server_socket_address_id, msg);
-
-    this -> neighbour_count ++;
 }
 
 // Sends message to the server with the specified ID
