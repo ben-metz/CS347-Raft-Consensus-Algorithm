@@ -16,7 +16,9 @@ https://raft.github.io/raft.pdf
 **Paxos Made Simple** https://lamport.azurewebsites.net/pubs/paxos-simple.pdf
 
 Once you have a clear idea of what you are aiming to achieve, it is crucial that you
-position your work in relation to existing research results.## Running instructions (Linux is easiest because g++)
+position your work in relation to existing research results.
+
+## Running instructions (Linux is easiest because g++)
 ### Terminal 1 (Python Client Directory)
 ```python3 udp_server.py```
 
