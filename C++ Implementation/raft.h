@@ -10,12 +10,15 @@ class Raft_Node{
         int random_timeout;
         long* time_of_last_message;
 
+        int term;
+        int candidate_id;
         int leader_id;
 
     public:
-        Raft_Node();
+        Raft_Node(int id);
         void input_message(char* msg, char* output_buffer);
         bool checkTimer();
-        std::string getVoteRequestMessage();
+        std::string getVoteRequestMessage(int last_log_index = -1, int last_log_term = -1);
         int getRandomTimeout();
+        int getID();
 };

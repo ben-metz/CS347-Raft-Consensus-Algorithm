@@ -15,7 +15,6 @@ Server::Server() {}
 void Server::initialise(int id, Manager *manager,
                         int port, int server_socket_address_count)
 {
-    this->id = id;
     this->database = (Database *)malloc(sizeof(Database));
     *this->database = Database(DATABASE_SIZE);
     this->manager = manager;
@@ -27,7 +26,7 @@ void Server::initialise(int id, Manager *manager,
     this->neighbours = (struct server_socket_address **)malloc(sizeof(struct server_socket_address *) * server_socket_address_count);
 
     this->raft = (Raft_Node *)malloc(sizeof(Raft_Node));
-    *this->raft = Raft_Node();
+    *this->raft = Raft_Node(id);
 
     raft_response = (char *)malloc(sizeof(char) * 250);
 
@@ -203,7 +202,7 @@ void Server::addToNeighbours()
 // Return the ID of server
 int Server::getID()
 {
-    return this->id;
+    return this->raft->getID();
 }
 
 // Adds a socket to the server_socket_addresss array of the server
