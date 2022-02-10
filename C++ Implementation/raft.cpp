@@ -50,6 +50,8 @@ void Raft_Node::input_message(char *msg, char *output_buffer)
     if ((deserialised_json["message_type"] == "request_vote") &&
         (deserialised_json["response"] == "false"))
     {
+        this->server->send_details("Vote Request Rejected");
+
         // If received term < nodes term, reply false
         if (deserialised_json["data"]["term"].get<int>() < this->term)
         {
@@ -77,6 +79,8 @@ void Raft_Node::input_message(char *msg, char *output_buffer)
     if ((deserialised_json["message_type"] == "request_vote") &&
         (deserialised_json["response"] == "true"))
     {
+        this->server->send_details("Vote Request Granted");
+
         // If received term < nodes term, reply false
         if (deserialised_json["data"]["vote_granted"] == "true")
         {
@@ -132,6 +136,8 @@ int Raft_Node::getID()
 // Returns the vote request message
 std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_term)
 {
+    this->server->send_details("Vote Request Sent");
+
     // Reset random timeout
     this->random_timeout = getRandomTimeout();
 
@@ -154,6 +160,7 @@ std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_te
 // Returns a string representation of a response message to send
 std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
 {
+    this->server->send_details("Sent Vote Response");
     json vote_request_data = {
         {"message_type", "request_vote"},
         {"response", "true"},
@@ -168,6 +175,8 @@ std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
 // Sets the state of the node based on passed string for convenience
 void Raft_Node::setState(std::string state)
 {
+    this->server->send_details("State: " + state);
+
     if (state == "Leader")
     {
         this->state = 0;

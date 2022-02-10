@@ -40,9 +40,11 @@ private:
     std::thread *thread;
     Database *database;
 
-    void send_details();
     void sendToServer(int id, std::string msg);
     void handleMessage(char *msg);
+
+    int stopped;
+    void set_status(int new_status);
 
     Raft_Node *raft;
     char *raft_response;
@@ -58,4 +60,5 @@ public:
     void addToNeighbours();
     struct server_socket_address *getSocket();
     void sendToAllServers(std::string msg);
+    void send_details(std::string action);
 };

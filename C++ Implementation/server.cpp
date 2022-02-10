@@ -33,6 +33,8 @@ void Server::initialise(int id, Manager *manager,
 
     this->raft_response = (char *)malloc(sizeof(char) * 250);
 
+    this -> stopped = 0;
+
     this->initSocket(port);
 
     this->initThread();
@@ -85,7 +87,7 @@ void Server::server_function()
                                 MSG_WAITALL, (struct sockaddr *)&this->socket_addr->addr,
                                 this->rcv_socklen);
 
-        // If a message is availble, handle it
+        // If a message is available, handle it
         if (*this->rcv_n != -1)
         {
             this->rcv_buffer[*this->rcv_n] = '\0';
@@ -93,10 +95,8 @@ void Server::server_function()
             //std::cout << "Server " << this->getID() << " Received Message: " << this->rcv_buffer << '\n';
 
             this->handleMessage(rcv_buffer);
-
-            this->send_details();
         }
-
+        
         // Check that the raft timer has not expired, if it has then request a vote from all servers
         if (*this->server_address_added >= EXPECTED_NEIGHBOURS)
         {
@@ -116,15 +116,25 @@ void Server::handleMessage(char *msg)
     if (deserialised_json["message_type"] == "data_update")
     {
         this->database->set_value(deserialised_json["data"]["index"], deserialised_json["data"]["value"]);
+        this->send_details("Database Update");
     }
-    else
+    else if (deserialised_json["message_type"] == "set_server_status")
+    {
+        this->set_status(deserialised_json["data"]["stopped"].get<int>());
+        this->send_details("Status Change");
+    }
+    else if (this->stopped == 0)
     {
         raft->input_message(msg, this->raft_response);
     }
 }
 
+void Server::set_status(int new_status){
+    this->stopped = new_status;
+}
+
 // Function to send details to python client
-void Server::send_details()
+void Server::send_details(std::string action)
 {
     std::ostringstream ss;
 
@@ -141,6 +151,7 @@ void Server::send_details()
                   {"state", this->raft->getState()}, // candidate's term
                   {"term", this->raft->getTerm()},   // candidate's term
                   {"vote", this->raft->getVote()},   // candidate requesting vote
+                  {"action", action},
                   {"database", ss.str()}}}};
 
     mtx.lock();
@@ -215,24 +226,28 @@ void Server::addSocket(struct server_socket_address *addr)
 // Sends message to the server with the specified ID
 void Server::sendToServer(int id, std::string msg)
 {
-    int sock_id = this->getSocketIndex(id);
+    if (this -> stopped == 0){
+        int sock_id = this->getSocketIndex(id);
 
-    while (socket_mutex[id].try_lock())
-        ;
+        while (socket_mutex[id].try_lock())
+            ;
 
-    sendto(*(this->neighbours[sock_id]->fd), (const char *)msg.c_str(), strlen(msg.c_str()),
-           MSG_CONFIRM, (const struct sockaddr *)&(this->neighbours[sock_id]->addr),
-           sizeof(this->neighbours[sock_id]->addr));
+        sendto(*(this->neighbours[sock_id]->fd), (const char *)msg.c_str(), strlen(msg.c_str()),
+            MSG_CONFIRM, (const struct sockaddr *)&(this->neighbours[sock_id]->addr),
+            sizeof(this->neighbours[sock_id]->addr));
 
-    socket_mutex[id].unlock();
+        socket_mutex[id].unlock();
+    }
 }
 
 // Sends message to all of the servers
 void Server::sendToAllServers(std::string msg)
 {
-    for (int i = 0; i < EXPECTED_NEIGHBOURS; i++)
-    {
-        this->sendToServer(this->neighbours[i]->server_socket_address_id, msg);
+    if (this -> stopped == 0){
+        for (int i = 0; i < EXPECTED_NEIGHBOURS; i++)
+        {
+            this->sendToServer(this->neighbours[i]->server_socket_address_id, msg);
+        }
     }
 }
 
