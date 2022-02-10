@@ -31,7 +31,7 @@ void Server::initialise(int id, Manager *manager,
     this->raft = (Raft_Node *)malloc(sizeof(Raft_Node));
     *this->raft = Raft_Node(id, SERVER_COUNT, this);
 
-    this -> raft_response = (char *)malloc(sizeof(char) * 250);
+    this->raft_response = (char *)malloc(sizeof(char) * 250);
 
     this->initSocket(port);
 
@@ -113,33 +113,14 @@ void Server::handleMessage(char *msg)
 {
     json deserialised_json = json::parse(std::string(msg));
 
-    if (deserialised_json["message_type"] == "data_update"){
+    if (deserialised_json["message_type"] == "data_update")
+    {
         this->database->set_value(deserialised_json["data"]["index"], deserialised_json["data"]["value"]);
-    } else {
+    }
+    else
+    {
         raft->input_message(msg, this->raft_response);
     }
-
-    
-
-    // Would send contents of raft response to appropriate server
-
-    // char *token = strtok(msg, " ");
-    // if (*token == 'U')
-    // {
-    //     token = strtok(NULL, " "); // Get rid of server ID
-
-    //     int *update_properties = (int *)malloc(sizeof(int) * 2);
-    //     int i = 0;
-    //     while (token = strtok(NULL, " "))
-    //     {
-    //         update_properties[i] = atoi(token);
-    //         i++;
-    //     }
-
-    //     this->database->set_value(update_properties[0], update_properties[1]);
-
-    //     free(update_properties);
-    // }
 }
 
 // Function to send details to python client
@@ -156,13 +137,11 @@ void Server::send_details()
     // Create json message
     json details_json = {
         {"message_type", "details_update"},
-        {"data", {
-                    {"id", this->raft->getID()},         // candidate's term
-                    {"state", this->raft->getState()},         // candidate's term
-                    {"term", this->raft->getTerm()},         // candidate's term
-                    {"vote", this->raft->getVote()}, // candidate requesting vote
-                    {"database", ss.str()}
-                 }}};
+        {"data", {{"id", this->raft->getID()},       // candidate's term
+                  {"state", this->raft->getState()}, // candidate's term
+                  {"term", this->raft->getTerm()},   // candidate's term
+                  {"vote", this->raft->getVote()},   // candidate requesting vote
+                  {"database", ss.str()}}}};
 
     mtx.lock();
     this->manager->send_msg(details_json.dump());

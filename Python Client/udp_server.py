@@ -10,8 +10,9 @@ import json
 
 from multilistbox import MultiListbox
 
-# Sends command when Send pressed
+# Sends command when send button pressed
 def send_command():
+    # Get the values from the send interface
     global index, value
     index_val = index.get()
     value_val = value.get()
@@ -23,9 +24,11 @@ def send_command():
                 (int(server_val) >= 0) & (int(server_val) < 5) &
                 (len(index_val) > 0) & (len(value_val) > 0) & (len(server_val))):
 
+            # Construct JSON update message
             update_msg = {"message_type": "data_update", "data": {"server_id": int(
                 server_val), "index": int(index_val), "value": int(value_val)}}
 
+            # Send to Manager
             client_send_socket.sendto(bytes(json.dumps(update_msg), 'utf-8'),
                                       (client_ip, client_send_port))
         else:
@@ -35,7 +38,6 @@ def send_command():
 
 
 # Takes incoming packets, splits up and places in correct text box
-
 def handle_packets(client_receive_socket):
     while True:  # Wait for response (updated list)
         (data, addr) = client_receive_socket.recvfrom(
@@ -66,29 +68,22 @@ def handle_packets(client_receive_socket):
 
 
 def main():
-
     # Initialise thread for receiving packets
-
     receiver = threading.Thread(target=handle_packets,
                                 args=(client_receive_socket, ),
                                 daemon=True)
     receiver.start()
 
     # Begin UI loop
-
     root.mainloop()
 
-
 if __name__ == '__main__':
-
     # IP of ESP and port used
-
     client_ip = '127.0.0.1'
     client_receive_port = 12345
     client_send_port = 12346
 
     # Define UDP socket and bind to port
-
     client_receive_socket = socket.socket(socket.AF_INET,
                                           socket.SOCK_DGRAM)  # UDP
     client_receive_socket.bind((client_ip, client_receive_port))
@@ -97,17 +92,14 @@ if __name__ == '__main__':
                                        socket.SOCK_DGRAM)  # UDP
 
     # Interface colours
-
     textCol = '#DDDDFF'
     bgCol = '#190C1C'
 
     # Tkinter interface construction
-
     root = Tk()
     root.geometry('1280x720')
 
     # Root frame
-
     root_frame = Frame(root, bg=bgCol)
     root_frame.place(relx=.5, rely=.5, anchor='center')
 
@@ -167,13 +159,11 @@ if __name__ == '__main__':
     b.grid(row=8, column=1)
 
     # Border frames
-
     component_split = Frame(root_frame, width=50, height=40,
                             background=bgCol)
     component_split.grid(row=500, column=2)
 
-    # details frame
-
+    # Details frame
     details_frame = Frame(root_frame, bg=bgCol)
     details_frame.grid(row=1, column=3)
 
@@ -183,6 +173,7 @@ if __name__ == '__main__':
 
     text_boxes = []
 
+    # Add the server displays
     for i in range(0, 5):
         label = Label(details_frame, text='Server ' + str(i),
                       font=fontStyle)

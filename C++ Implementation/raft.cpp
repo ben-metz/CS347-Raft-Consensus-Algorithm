@@ -5,6 +5,7 @@
 
 using json = nlohmann::json;
 
+// Initialiser for Raft_Node
 Raft_Node::Raft_Node(int id, int server_count, Server *server)
 {
     this->candidate_id = id;
@@ -22,14 +23,19 @@ Raft_Node::Raft_Node(int id, int server_count, Server *server)
     this->server = server;
 }
 
-void Raft_Node::run(){
-    if(this->checkTimer()){
-        //std::cout << "REQUESTING VOTES";
-        this -> setState("Candidate");
+// This function is run every millisecond, it checks the timer to see if
+// an election can begin
+void Raft_Node::run()
+{
+    if (this->checkTimer())
+    {
+        this->setState("Candidate");
         this->server->sendToAllServers(this->getVoteRequestMessage());
     }
 }
 
+// When a server receives a message, it is fed into this function where
+// it is deserialised and the appropriate action is taken
 void Raft_Node::input_message(char *msg, char *output_buffer)
 {
     // ATM only displays raft input
@@ -89,6 +95,7 @@ void Raft_Node::input_message(char *msg, char *output_buffer)
     //std::cout << "Raft Response: " << output_buffer << "\n\n";
 }
 
+// This function checks if the random timeout has expired, if so, take appropriate action
 bool Raft_Node::checkTimer()
 {
     auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -112,10 +119,11 @@ bool Raft_Node::checkTimer()
 // Returns a random int between 150 and 300
 int Raft_Node::getRandomTimeout()
 {
-    srand(time(0));
+    srand(time(0)); // Set seed to current time
     return 150 + rand() % 150;
 }
 
+// Returns ID of server/raft instance
 int Raft_Node::getID()
 {
     return this->candidate_id;
@@ -143,6 +151,7 @@ std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_te
     return vote_request_data.dump();
 }
 
+// Returns a string representation of a response message to send
 std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
 {
     json vote_request_data = {
@@ -156,6 +165,7 @@ std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
     return vote_request_data.dump();
 }
 
+// Sets the state of the node based on passed string for convenience
 void Raft_Node::setState(std::string state)
 {
     if (state == "Leader")
@@ -174,14 +184,20 @@ void Raft_Node::setState(std::string state)
     }
 }
 
-int Raft_Node::getState(){
+// Returns the current state
+int Raft_Node::getState()
+{
     return this->state;
 }
 
-int Raft_Node::getTerm(){
+// Returns the current term
+int Raft_Node::getTerm()
+{
     return this->term;
 }
 
-int Raft_Node::getVote(){
+// Returns the current node voted for
+int Raft_Node::getVote()
+{
     return this->voted_for_id;
 }

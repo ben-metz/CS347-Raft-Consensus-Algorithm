@@ -16,44 +16,46 @@ class Manager;
 class Raft_Node;
 
 // Stores server_socket_address server communication details
-struct server_socket_address {
+struct server_socket_address
+{
     int server_socket_address_id;
-    int* fd;
+    int *fd;
     struct sockaddr_in addr;
 };
 
-class Server {
-    private:
-        void server_function();
-        void initThread();
-        Manager* manager;
-        char* rcv_buffer;
-        int* rcv_n;
-        socklen_t* rcv_socklen;
-        struct server_socket_address** neighbours;
-        int* server_address_added;
-        int getSocketIndex(int server_id);
+class Server
+{
+private:
+    void server_function();
+    void initThread();
+    Manager *manager;
+    char *rcv_buffer;
+    int *rcv_n;
+    socklen_t *rcv_socklen;
+    struct server_socket_address **neighbours;
+    int *server_address_added;
+    int getSocketIndex(int server_id);
 
-        struct server_socket_address* socket_addr;
-        std::thread* thread;
-        Database *database;
+    struct server_socket_address *socket_addr;
+    std::thread *thread;
+    Database *database;
 
-        void send_details();
-        void sendToServer(int id, std::string msg);
-        void handleMessage(char* msg);
+    void send_details();
+    void sendToServer(int id, std::string msg);
+    void handleMessage(char *msg);
 
-        Raft_Node* raft;
-        char* raft_response;
+    Raft_Node *raft;
+    char *raft_response;
 
-    public:
-        Server();
-        int getID();
-        void join();
-        void initialise(int id, Manager* manager,
-            int port, int server_socket_address_count);
-        void initSocket(int port);
-        void addSocket(struct server_socket_address* addr);
-        void addToNeighbours();
-        struct server_socket_address* getSocket();
-        void sendToAllServers(std::string msg);
+public:
+    Server();
+    int getID();
+    void join();
+    void initialise(int id, Manager *manager,
+                    int port, int server_socket_address_count);
+    void initSocket(int port);
+    void addSocket(struct server_socket_address *addr);
+    void addToNeighbours();
+    struct server_socket_address *getSocket();
+    void sendToAllServers(std::string msg);
 };
