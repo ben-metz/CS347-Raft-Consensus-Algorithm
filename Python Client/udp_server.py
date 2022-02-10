@@ -6,6 +6,7 @@ import socket
 import threading
 import math
 import time
+import json
 
 from multilistbox import MultiListbox
 
@@ -35,22 +36,27 @@ def send_command():
 def handle_packets(client_receive_socket):
     while True:  # Wait for response (updated list)
         (data, addr) = client_receive_socket.recvfrom(1024)  # buffer size is 1024 bytes
+
         try:
-            decoded = data.decode()
+            # Decode and load into json
+            decoded = json.loads(data.decode())
 
-            if 'Started' in decoded:
-                con.configure(text='Connected', bg='green')
-                continue
+            if (decoded['message_type'] == "details_update"):
+                # If details update, display in respective server
+                data = decoded['data']
 
-            if 'Ended' in decoded:
-                con.configure(text='Disconnected', bg='red')
-                continue
+                text_boxes[int(data['id'])].insert(0, (data['state'], 
+                    data['term'], data['vote'],
+                    data['database'], str(round(time.time(), 2))))
+            elif (decoded['message_type'] == "connection_status"):
+                # If connection status, update connected status
+                if decoded['data'] == 'started':
+                    con.configure(text='Connected', bg='green')
+                    continue
 
-            split_decoded = decoded.split(':')
-            text_boxes[int(data.decode()[0])].insert(0, ('-', '-', '-',
-                    split_decoded[1], str(round(time.time(), 2))))
-
-            con.configure(text='Connected', bg='green')
+                if decoded['data'] == 'ended':
+                    con.configure(text='Disconnected', bg='red')
+                    continue
         except:
             print('Error:\tDecode Error')
 
@@ -172,7 +178,7 @@ if __name__ == '__main__':
 
     text_boxes = []
 
-    for i in range(0, 6):
+    for i in range(0, 5):
         label = Label(details_frame, text='Server ' + str(i),
                       font=fontStyle)
 

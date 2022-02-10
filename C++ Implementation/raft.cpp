@@ -1,8 +1,6 @@
 #include "raft.h"
 #include <iostream>
 #include <chrono>
-//#include "json/json.h"
-#include "json.hpp"
 #include "server.h"
 
 using json = nlohmann::json;
@@ -174,4 +172,16 @@ void Raft_Node::setState(std::string state)
     {
         this->state = 2;
     }
+}
+
+int Raft_Node::getState(){
+    return this->state;
+}
+
+int Raft_Node::getTerm(){
+    return this->term;
+}
+
+int Raft_Node::getVote(){
+    return this->voted_for_id;
 }

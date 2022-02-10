@@ -1,6 +1,8 @@
 #include "manager.h"
 #include "server.h"
 
+using json = nlohmann::json;
+
 std::atomic_bool running_(true);
 
 // Manager constructor, define socket and servers
@@ -51,7 +53,11 @@ void Manager::init_sockets(){
         exit(EXIT_FAILURE);
     }
 
-    this -> send_msg("Connection Started...");
+    json start_msg = {
+        {"message_type", "connection_status"},
+        {"data", "started"}};
+
+    this -> send_msg(start_msg.dump());
 }
 
 // Function that listens to the receive socket
@@ -160,7 +166,11 @@ void Manager::finish(){
     free(this -> listener);
     free(this -> servers);
 
-    this -> send_msg("Connection Ended...");
+    json end_msg = {
+        {"message_type", "connection_status"},
+        {"data", "ended"}};
+
+    this -> send_msg(end_msg.dump());
 
     std::cout << "Closing Python Communication Sockets and Freeing Memory...\n";
     close(*(this -> receive_socket_fd));

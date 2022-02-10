@@ -3,6 +3,8 @@
 #include "database.h"
 #include "raft.h"
 
+using json = nlohmann::json;
+
 std::mutex mtx;
 
 std::mutex socket_mutex[SERVER_COUNT];
@@ -29,7 +31,7 @@ void Server::initialise(int id, Manager *manager,
     this->raft = (Raft_Node *)malloc(sizeof(Raft_Node));
     *this->raft = Raft_Node(id, SERVER_COUNT, this);
 
-    raft_response = (char *)malloc(sizeof(char) * 250);
+    this -> raft_response = (char *)malloc(sizeof(char) * 250);
 
     this->initSocket(port);
 
@@ -137,15 +139,25 @@ void Server::send_details()
 {
     std::ostringstream ss;
 
-    ss << this->getID() << ":";
-
+    // Convert data to string
     for (int i = 0; i < *database->get_size(); i++)
     {
         ss << this->database->get_value(i) << ' ';
     }
 
+    // Create json message
+    json details_json = {
+        {"message_type", "details_update"},
+        {"data", {
+                    {"id", this->raft->getID()},         // candidate's term
+                    {"state", this->raft->getState()},         // candidate's term
+                    {"term", this->raft->getTerm()},         // candidate's term
+                    {"vote", this->raft->getVote()}, // candidate requesting vote
+                    {"database", ss.str()}
+                 }}};
+
     mtx.lock();
-    this->manager->send_msg(ss.str());
+    this->manager->send_msg(details_json.dump());
     mtx.unlock();
 }
 

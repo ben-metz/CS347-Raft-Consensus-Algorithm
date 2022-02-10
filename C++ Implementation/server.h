@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include "json.hpp"
 
 #define DATABASE_SIZE 5
 #define EXPECTED_NEIGHBOURS 4

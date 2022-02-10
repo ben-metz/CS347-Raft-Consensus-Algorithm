@@ -36,4 +36,8 @@ class Raft_Node{
 
         void setState(std::string state);
         void run();
+
+        int getState();
+        int getTerm();
+        int getVote();
 };
