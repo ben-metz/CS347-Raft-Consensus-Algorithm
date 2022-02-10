@@ -90,7 +90,7 @@ void Server::server_function()
         {
             this->rcv_buffer[*this->rcv_n] = '\0';
 
-            std::cout << "Server " << this->getID() << " Received Message: " << this->rcv_buffer << '\n';
+            //std::cout << "Server " << this->getID() << " Received Message: " << this->rcv_buffer << '\n';
 
             this->handleMessage(rcv_buffer);
 
@@ -111,27 +111,35 @@ void Server::server_function()
 // Handles messages received on the receive socket
 void Server::handleMessage(char *msg)
 {
-    raft->input_message(msg, this->raft_response);
+    json deserialised_json = json::parse(std::string(msg));
+
+    if (deserialised_json["message_type"] == "data_update"){
+        this->database->set_value(deserialised_json["data"]["index"], deserialised_json["data"]["value"]);
+    } else {
+        raft->input_message(msg, this->raft_response);
+    }
+
+    
 
     // Would send contents of raft response to appropriate server
 
-    char *token = strtok(msg, " ");
-    if (*token == 'U')
-    {
-        token = strtok(NULL, " "); // Get rid of server ID
+    // char *token = strtok(msg, " ");
+    // if (*token == 'U')
+    // {
+    //     token = strtok(NULL, " "); // Get rid of server ID
 
-        int *update_properties = (int *)malloc(sizeof(int) * 2);
-        int i = 0;
-        while (token = strtok(NULL, " "))
-        {
-            update_properties[i] = atoi(token);
-            i++;
-        }
+    //     int *update_properties = (int *)malloc(sizeof(int) * 2);
+    //     int i = 0;
+    //     while (token = strtok(NULL, " "))
+    //     {
+    //         update_properties[i] = atoi(token);
+    //         i++;
+    //     }
 
-        this->database->set_value(update_properties[0], update_properties[1]);
+    //     this->database->set_value(update_properties[0], update_properties[1]);
 
-        free(update_properties);
-    }
+    //     free(update_properties);
+    // }
 }
 
 // Function to send details to python client

@@ -24,7 +24,7 @@ Raft_Node::Raft_Node(int id, int server_count, Server *server)
 
 void Raft_Node::run(){
     if(this->checkTimer()){
-        std::cout << "REQUESTING VOTES";
+        //std::cout << "REQUESTING VOTES";
         this -> setState("Candidate");
         this->server->sendToAllServers(this->getVoteRequestMessage());
     }
@@ -33,7 +33,7 @@ void Raft_Node::run(){
 void Raft_Node::input_message(char *msg, char *output_buffer)
 {
     // ATM only displays raft input
-    std::cout << "Raft Input: " << msg << '\n';
+    //std::cout << "Raft Input: " << msg << '\n';
 
     // Reset countdown every time message received (needs to be changed to be only when heartbeat received from leader)
     *(this->time_of_last_message) = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -86,7 +86,7 @@ void Raft_Node::input_message(char *msg, char *output_buffer)
         }
     }
 
-    std::cout << "Raft Response: " << output_buffer << "\n\n";
+    //std::cout << "Raft Response: " << output_buffer << "\n\n";
 }
 
 bool Raft_Node::checkTimer()

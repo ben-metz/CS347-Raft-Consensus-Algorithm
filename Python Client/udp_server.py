@@ -11,7 +11,6 @@ import json
 from multilistbox import MultiListbox
 
 # Sends command when Send pressed
-
 def send_command():
     global index, value
     index_val = index.get()
@@ -19,12 +18,16 @@ def send_command():
     server_val = server.get()
 
     try:
-        if ((int(index_val) >= 0) & (int(index_val) < 5) & 
-                (int(server_val) >= 0) & (int(server_val) < 7) & 
+        # Make sure valid input with conditionals
+        if ((int(index_val) >= 0) & (int(index_val) < 5) &
+                (int(server_val) >= 0) & (int(server_val) < 5) &
                 (len(index_val) > 0) & (len(value_val) > 0) & (len(server_val))):
-            string = 'U ' + str(int(server_val)) + ' ' + str(int(index_val)) + ' ' + str(int(value_val))
-            client_send_socket.sendto(bytes(string, 'utf-8'),
-                    (client_ip, client_send_port))
+
+            update_msg = {"message_type": "data_update", "data": {"server_id": int(
+                server_val), "index": int(index_val), "value": int(value_val)}}
+
+            client_send_socket.sendto(bytes(json.dumps(update_msg), 'utf-8'),
+                                      (client_ip, client_send_port))
         else:
             print('Error:\tInvalid Input')
     except:
@@ -35,7 +38,8 @@ def send_command():
 
 def handle_packets(client_receive_socket):
     while True:  # Wait for response (updated list)
-        (data, addr) = client_receive_socket.recvfrom(1024)  # buffer size is 1024 bytes
+        (data, addr) = client_receive_socket.recvfrom(
+            1024)  # buffer size is 1024 bytes
 
         try:
             # Decode and load into json
@@ -45,9 +49,9 @@ def handle_packets(client_receive_socket):
                 # If details update, display in respective server
                 data = decoded['data']
 
-                text_boxes[int(data['id'])].insert(0, (data['state'], 
-                    data['term'], data['vote'],
-                    data['database'], str(round(time.time(), 2))))
+                text_boxes[int(data['id'])].insert(0, (data['state'],
+                                                       data['term'], data['vote'],
+                                                       data['database'], str(round(time.time(), 2))))
             elif (decoded['message_type'] == "connection_status"):
                 # If connection status, update connected status
                 if decoded['data'] == 'started':
@@ -59,6 +63,7 @@ def handle_packets(client_receive_socket):
                     continue
         except:
             print('Error:\tDecode Error')
+
 
 def main():
 
@@ -85,11 +90,11 @@ if __name__ == '__main__':
     # Define UDP socket and bind to port
 
     client_receive_socket = socket.socket(socket.AF_INET,
-            socket.SOCK_DGRAM)  # UDP
+                                          socket.SOCK_DGRAM)  # UDP
     client_receive_socket.bind((client_ip, client_receive_port))
 
     client_send_socket = socket.socket(socket.AF_INET,
-            socket.SOCK_DGRAM)  # UDP
+                                       socket.SOCK_DGRAM)  # UDP
 
     # Interface colours
 
