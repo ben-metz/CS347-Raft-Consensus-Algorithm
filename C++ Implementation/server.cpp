@@ -125,7 +125,7 @@ void Server::handleMessage(char *msg)
     }
     else if (this->stopped == 0)
     {
-        raft->input_message(msg, this->raft_response);
+        this->raft->input_message(msg);
     }
 }
 

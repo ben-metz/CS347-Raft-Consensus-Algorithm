@@ -1,5 +1,11 @@
 #include <string>
 
+#define LEADER 0
+#define CANDIDATE 1
+#define FOLLOWER 2
+
+#define HEARTBEAT_TIMEOUT 100
+
 class Server;
 
 class Raft_Node
@@ -11,8 +17,12 @@ private:
         is stored here to be sent to the database stored on 
         the server */
     char **database_change_buffer;
-    int random_timeout;
+
+    int election_timeout;
+    int heartbeat_timeout;
+
     long *time_of_last_message;
+    long *time_of_last_heartbeat;
 
     int server_count;
 
@@ -29,17 +39,23 @@ private:
 public:
     Raft_Node(int id, int server_count, Server *server);
     void run();
-    void input_message(char *msg, char *output_buffer);
-    bool checkTimer();
+    void input_message(char *msg);
+
+    bool checkElectionTimer();
+    bool checkHeartbeatTimer();
+
+    int getElectionTimeout();
 
     std::string getVoteRequestMessage(int last_log_index = -1, int last_log_term = -1);
     std::string getVoteResponseMessage(bool voteGranted);
 
-    int getRandomTimeout();
+    std::string getAppendEntriesMessage(bool heartbeat, int last_log_index = -1, int last_log_term = -1);
+    std::string getAppendEntriesResponseMessage(bool success);
+
     int getID();
     int getState();
     int getTerm();
     int getVote();
 
-    void setState(std::string state);
+    void setState(int state);
 };

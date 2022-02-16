@@ -40,7 +40,7 @@ private:
     std::thread *thread;
     Database *database;
 
-    void sendToServer(int id, std::string msg);
+    
     void handleMessage(char *msg);
 
     int stopped;
@@ -60,5 +60,6 @@ public:
     void addToNeighbours();
     struct server_socket_address *getSocket();
     void sendToAllServers(std::string msg);
+    void sendToServer(int id, std::string msg);
     void send_details(std::string action);
 };
