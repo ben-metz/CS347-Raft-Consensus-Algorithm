@@ -15,8 +15,6 @@ https://raft.github.io/raft.pdf
 
 **Paxos Made Simple** https://lamport.azurewebsites.net/pubs/paxos-simple.pdf
 
-**Analysis of Raft Consensus** https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-857.pdf
-
 **Planning for Change in a Formal Verification of the Raft Consensus Protocol** https://dl.acm.org/doi/pdf/10.1145/2854065.2854081
 \[ We present the first formal verification of state machine safety for the Raft consensus protocol, a critical component of many distributed systems. \]
 
