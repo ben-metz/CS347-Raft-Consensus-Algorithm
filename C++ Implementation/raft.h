@@ -76,4 +76,6 @@ public:
     int getVote();
 
     void setState(int state);
+
+    int getCommitIndex();
 };

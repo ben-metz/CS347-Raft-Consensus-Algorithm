@@ -156,6 +156,7 @@ void Server::send_details(std::string action)
                   {"term", this->raft->getTerm()},   // candidate's term
                   {"vote", this->raft->getVote()},   // candidate requesting vote
                   {"action", action},
+                  {"lastCommited", this->raft->getCommitIndex()},
                   {"database", ss.str()}}}};
 
     mtx.lock();

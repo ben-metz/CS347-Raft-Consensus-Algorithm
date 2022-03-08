@@ -39,7 +39,6 @@ private:
     struct server_socket_address *socket_addr;
     std::thread *thread;
     Database *database;
-
     
     void handleMessage(char *msg);
 

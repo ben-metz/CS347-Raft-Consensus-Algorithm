@@ -65,7 +65,7 @@ def handle_packets(client_receive_socket):
 
                 interfaces[int(data['id'])].insert((states[data['state']],
                                                         data['term'], data['vote'], data['action'],
-                                                        data['database'], str(round(time.time() - start_time, 2))))
+                                                        data['database'], data['lastCommited'], str(round(time.time() - start_time, 2))))
             elif (decoded['message_type'] == "connection_status"):
                 # If connection status, update connected status
                 if decoded['data'] == 'started':

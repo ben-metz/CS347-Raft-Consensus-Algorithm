@@ -22,8 +22,8 @@ class Interface:
                                                                          * math.floor(index / 2)) + 1, sticky=E+S)
 
         self.text_box = MultiListbox(frame, (('State', 10), ('Term',
-                                                             7), ('Vote', 5), ('Action', 25), ('Array', 16),
-                                             ('Time', 9)))
+                                                             5), ('Vote', 5), ('Action', 25), ('Array', 15),
+                                             ('Commit', 7), ('Time', 7)))
         self.text_box.grid(row=1 + 3 * math.floor(index / 2), column=3 * (index - 2
                                                                           * math.floor(index / 2)) + 1)
 

@@ -507,3 +507,7 @@ int Raft_Node::getVote()
 {
     return this->voted_for_id;
 }
+
+int Raft_Node::getCommitIndex(){
+    return this->commitIndex;
+}
