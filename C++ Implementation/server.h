@@ -62,4 +62,7 @@ public:
     void sendToAllServers(std::string msg);
     void sendToServer(int id, std::string msg);
     void send_details(std::string action);
+    int getServerSocketAddress(int server);
+
+    inline Database* getDatabase() { return database; }
 };

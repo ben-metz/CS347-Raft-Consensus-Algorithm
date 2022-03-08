@@ -113,12 +113,13 @@ void Server::handleMessage(char *msg)
 {
     json deserialised_json = json::parse(std::string(msg));
 
-    if (deserialised_json["message_type"] == "data_update")
-    {
-        this->database->set_value(deserialised_json["data"]["index"], deserialised_json["data"]["value"]);
-        this->send_details("Database Update");
-    }
-    else if (deserialised_json["message_type"] == "set_server_status")
+    // if (deserialised_json["message_type"] == "data_update")
+    // {
+    //     this->database->set_value(deserialised_json["data"]["index"], deserialised_json["data"]["value"]);
+    //     this->send_details("Database Update");
+    // }
+    // else
+    if (deserialised_json["message_type"] == "set_server_status")
     {
         this->set_status(deserialised_json["data"]["stopped"].get<int>());
         this->send_details("Status Change");
@@ -268,4 +269,12 @@ int Server::getSocketIndex(int server_id)
 struct server_socket_address *Server::getSocket()
 {
     return this->socket_addr;
+}
+
+int Server::getServerSocketAddress(int server)
+{
+    if (server >= EXPECTED_NEIGHBOURS)
+        server = EXPECTED_NEIGHBOURS - 1;
+
+    return this->neighbours[server]->server_socket_address_id;
 }

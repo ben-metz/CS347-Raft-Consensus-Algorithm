@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 
 #define LEADER 0
 #define CANDIDATE 1
@@ -13,10 +14,25 @@ class Raft_Node
 private:
     int state;
 
-    /* If a database change is received, the update command 
-        is stored here to be sent to the database stored on 
-        the server */
-    char **database_change_buffer;
+    struct LogEntry
+    {
+        int term;
+        int index;
+        int value;
+    };
+    std::vector<LogEntry> log;
+
+    // Index of highest log entry known to be committed
+    int commitIndex;
+    // Index of highest log entry applied to state machine
+    int lastApplied;
+
+    // For each server, index of the next
+    // log entry to send to that server
+    int* nextIndex;
+    // For each server, index of the highest log
+    // entry known to be replicated on that server
+    int* matchIndex;
 
     int election_timeout;
     int heartbeat_timeout;
@@ -38,6 +54,8 @@ private:
 
 public:
     Raft_Node(int id, int server_count, Server *server);
+    ~Raft_Node();
+
     void run();
     void input_message(char *msg);
 
@@ -49,7 +67,7 @@ public:
     std::string getVoteRequestMessage(int last_log_index = -1, int last_log_term = -1);
     std::string getVoteResponseMessage(bool voteGranted);
 
-    std::string getAppendEntriesMessage(bool heartbeat, int last_log_index = -1, int last_log_term = -1);
+    std::string getAppendEntriesMessage(int server);
     std::string getAppendEntriesResponseMessage(bool success);
 
     int getID();
