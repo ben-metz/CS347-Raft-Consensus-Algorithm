@@ -7,7 +7,7 @@
 using json = nlohmann::json;
 
 // Initialiser for Raft_Node
-Raft_Node::Raft_Node(int id, int server_count, Server *server)
+Raft_Node::Raft_Node(int id, float server_count, Server *server)
     : commitIndex(-1)
     , lastApplied(-1)
     , log()
@@ -20,7 +20,7 @@ Raft_Node::Raft_Node(int id, int server_count, Server *server)
     *(this->time_of_last_message) = 0L;
     this->time_of_last_heartbeat = (long *)malloc(sizeof(long));
     *(this->time_of_last_heartbeat) = 0L;
-    this->election_timeout = getElectionTimeout();
+    this->resetElectionTimer();
 
     this->nextIndex = (int*)calloc(sizeof(int), server_count);
     for (int i = 0; i < server_count; i++)
@@ -56,17 +56,27 @@ void Raft_Node::run()
 
         // send heartbeats
         for (int serverID = 0; serverID < server_count; serverID++)
-            if (serverID != candidate_id)
+            if (serverID < candidate_id){
                 this->server->sendToServer(this->server->getServerSocketAddress(serverID), this->getAppendEntriesMessage(serverID));
+            } else if (serverID > candidate_id) {
+                this->server->sendToServer(this->server->getServerSocketAddress(serverID-1), this->getAppendEntriesMessage(serverID));
+            }
     }
 
     // If election timer expired, request votes from neighbours
     if (this->checkElectionTimer())
     {
         this->setState(CANDIDATE);
+
+        this -> term++;
+
         this->voted_for_id = this -> candidate_id;
         this->vote_count = 1; // 1 because always votes for self
-        this->server->sendToAllServers(this->getVoteRequestMessage());
+
+        // Reset random timeout
+        this->resetElectionTimer();
+        
+        this->server->sendToAllServers(this->getVoteRequestMessage(this->commitIndex, -1));
     }
 
     // If the commit index is less than the apply index
@@ -79,6 +89,14 @@ void Raft_Node::run()
     }
 }
 
+void Raft_Node::resetElectionTimer(){
+    // Reset election timeout
+    this->election_timeout = getElectionTimeout();
+
+    // Reset time of last interaction if timeout reached
+    *(this->time_of_last_message) = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
 // When a server receives a message, it is fed into this function where
 // it is deserialised and the appropriate action is taken
 void Raft_Node::input_message(char *msg)
@@ -88,79 +106,70 @@ void Raft_Node::input_message(char *msg)
 
     json deserialised_json = json::parse(std::string(msg));
 
+    // If received term > nodes term, then step down
+    if ((deserialised_json["message_type"] != "data_update") && (deserialised_json["data"]["term"].get<int>() > this->term))
+    {
+        // Update the node term to the term of received message
+        this->term = deserialised_json["data"]["term"].get<int>();
+
+        // Stepped down, so not a follower
+        this->setState(FOLLOWER);
+
+        // Reset voted for indicator
+        this->voted_for_id = -1;
+
+        this -> vote_count = 0;
+    }
+
     // If message is a vote request, respond with a vote response
     if ((deserialised_json["message_type"] == "request_vote") &&
         (deserialised_json["response"] == "false"))
     {
-        this->server->send_details("Vote Request Received");
+        std::ostringstream s;
 
-        // If candidate, already voted for themselves
-        if (this->state == CANDIDATE){
-            this->server->sendToServer(deserialised_json["sender_id"].get<int>(), this->getVoteResponseMessage(false));
-        }
-
-        // If received term > nodes term, then step down
-        if (deserialised_json["data"]["term"].get<int>() > this->term)
+        // §5.2, §5.4: If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
+        if (this->voted_for_id == -1 && deserialised_json["data"]["last_log_index"].get<int>() >= this->commitIndex)
         {
-            // Update the node term to the term of received message
-            this->term = deserialised_json["data"]["term"].get<int>();
+            
+            s << "Vote Request from " << deserialised_json["sender_id"]<< " granted";
+            std::string resp(s.str());
 
-            // Stepped down, so not a follower
-            this->setState(FOLLOWER);
-
-            // Reset voted for indicator
-            this->voted_for_id = -1;
-        }
-
-        // If received term < nodes term, reply false (out of date candidate)
-        if (deserialised_json["data"]["term"].get<int>() < this->term)
-        {
-            this->server->sendToServer(deserialised_json["sender_id"].get<int>(), this->getVoteResponseMessage(false));
-        }
-
-        // Don't double vote
-        if (this->voted_for_id != -1)
-        {
-            this->server->sendToServer(deserialised_json["sender_id"].get<int>(), this->getVoteResponseMessage(false));
-        }
-
-        // If nobody voted for, then vote for message sender
-        if (this->voted_for_id == -1)
-        {
-            // Reset random timeout
-            this->election_timeout = getElectionTimeout();
+            this->server->send_details(resp);
 
             // Indicate vote for candidate that sent message
             this->voted_for_id = deserialised_json["data"]["candidate_id"].get<int>();
 
             // Return successful vote message
             this->server->sendToServer(deserialised_json["sender_id"].get<int>(), this->getVoteResponseMessage(true));
+
+            // Reset election timeout
+            this->resetElectionTimer();
+
+            return;
         }
+
+        s << "Vote Request from " << deserialised_json["sender_id"]<< " denied";
+        std::string resp(s.str());
+
+        this->server->sendToServer(deserialised_json["sender_id"].get<int>(), this->getVoteResponseMessage(false));
+
+        this->server->send_details(resp);
     }
 
     // If message is a vote response, check if valid
     if ((deserialised_json["message_type"] == "request_vote") &&
         (deserialised_json["response"] == "true"))
     {
-        this->server->send_details("Vote Response Received");
+        std::ostringstream s;
+        s << "Vote Response: " << deserialised_json["data"]["vote_granted"] << ' ' << deserialised_json["sender_id"];
+        std::string resp(s.str());
 
-        // If received term > nodes term, step down
-        if (deserialised_json["data"]["term"].get<int>() > this->term)
-        {
-            // Update the node term to the term of received message
-            this->term = deserialised_json["data"]["term"].get<int>();
-
-            // Stepped down, so not a follower
-            this->setState(FOLLOWER);
-
-            // Reset voted for indicator
-            this->voted_for_id = -1;
-        }
+        this->server->send_details(resp);
 
         // If vote granted, add to count
-        if (deserialised_json["data"]["vote_granted"] == true)
-        {
-            if (this->vote_count++ > this->server_count / 2)
+        if (deserialised_json["data"]["vote_granted"] == true && this -> state == CANDIDATE)
+        {            
+            if (++this->vote_count > this->server_count / 2)
             {
                 this->setState(LEADER);
 
@@ -187,6 +196,13 @@ void Raft_Node::input_message(char *msg)
         this->server->send_details("AppendEntry RPC Received");
 
         int sender_id = deserialised_json["sender_id"].get<int>();
+
+        // Reset random timeout
+        this->resetElectionTimer();
+
+        this -> vote_count = 0;
+
+        this->voted_for_id = -1;
 
         if (this->getState() == CANDIDATE){
             this->setState(FOLLOWER);
@@ -329,9 +345,6 @@ bool Raft_Node::checkElectionTimer()
         // Reset time of last interaction if timeout reached
         *(this->time_of_last_message) = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-        // Start next term
-        this->term++;
-
         return true;
     }
     else
@@ -374,13 +387,7 @@ int Raft_Node::getID()
 // Returns the vote request message
 std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_term)
 {
-    this->server->send_details("Vote Request Sent");
-
-    // Reset random timeout
-    this->election_timeout = getElectionTimeout();
-
-    // Vote for itself
-    this->vote_count++;
+    //this->server->send_details("Vote Request Sent");
 
     json vote_request_data = {
         {"sender_id", this->candidate_id},
@@ -399,7 +406,8 @@ std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_te
 // Returns a string representation of a response message to send
 std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
 {
-    this->server->send_details("Sent Vote Response");
+    //this->server->send_details("Sent Vote Response");
+
     json vote_request_data = {
         {"sender_id", this->candidate_id},
         {"message_type", "request_vote"},
@@ -417,6 +425,8 @@ std::string Raft_Node::getAppendEntriesMessage(int server)
 {
     int prevLogIndex = nextIndex[server] - 1;
     int prevLogTerm = (prevLogIndex < log.size() && prevLogIndex >= 0) ? log[prevLogIndex].term : 0;
+
+    //this->server->send_details("AppendEntries Sent");
 
     json appendEntriesJson = {
         {"sender_id", this->candidate_id},

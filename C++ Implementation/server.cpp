@@ -42,8 +42,6 @@ void Server::initialise(int id, Manager *manager,
 // Join the thread and close the receive socket
 void Server::finish()
 {
-    //his->thread->join();
-
     std::cout << "Closing Server " << this->getID() << " Socket and Freeing Memory..."
               << "\n";
     close(*(this->socket_addr->fd));
@@ -125,7 +123,10 @@ void Server::handleMessage(char *msg)
     if (deserialised_json["message_type"] == "set_server_status")
     {
         this->set_status(deserialised_json["data"]["stopped"].get<int>());
+
         this->send_details("Status Change");
+
+        this->raft->resetElectionTimer();
     }
     else if (this->stopped == 0)
     {
