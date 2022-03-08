@@ -28,8 +28,7 @@ void Server::initialise(int id, Manager *manager,
     this->socket_addr = (struct server_socket_address *)malloc(sizeof(struct server_socket_address));
     this->neighbours = (struct server_socket_address **)malloc(sizeof(struct server_socket_address *) * server_socket_address_count);
 
-    this->raft = (Raft_Node *)malloc(sizeof(Raft_Node));
-    *this->raft = Raft_Node(id, SERVER_COUNT, this);
+    this->raft = new Raft_Node(id, SERVER_COUNT, this);
 
     this->raft_response = (char *)malloc(sizeof(char) * 250);
 
@@ -65,7 +64,7 @@ void Server::join()
     free(this->database->get_data());
     free(this->database);
 
-    free(this->raft);
+    delete this->raft;
     free(this->raft_response);
 }
 

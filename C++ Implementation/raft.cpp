@@ -40,11 +40,10 @@ Raft_Node::Raft_Node(int id, int server_count, Server *server)
 
 Raft_Node::~Raft_Node()
 {
-    // These somehow break everything? Please tell me I'm being dumb
-    // free(this->time_of_last_message);
-    // free(this->time_of_last_heartbeat);
-    // free(this->nextIndex);
-    // free(this->matchIndex);
+    free(this->time_of_last_message);
+    free(this->time_of_last_heartbeat);
+    free(this->nextIndex);
+    free(this->matchIndex);
 }
 
 // This function is run every millisecond, it checks the timer to see if
