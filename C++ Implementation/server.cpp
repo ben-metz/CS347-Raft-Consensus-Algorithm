@@ -101,7 +101,7 @@ void Server::server_function()
         }
         
         // Check that the raft timer has not expired, if it has then request a vote from all servers
-        if (*this->server_address_added >= EXPECTED_NEIGHBOURS)
+        if (*this->server_address_added >= EXPECTED_NEIGHBOURS && !this->stopped)
         {
             this->raft->run();
         }
