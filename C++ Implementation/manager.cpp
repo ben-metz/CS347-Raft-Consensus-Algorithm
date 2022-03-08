@@ -130,8 +130,7 @@ void Manager::init_listener()
     this->rcv_socklen = (socklen_t *)malloc(sizeof(socklen_t));
     *this->rcv_socklen = sizeof(this->rcv_addr);
 
-    this->listener = (std::thread *)malloc(sizeof(std::thread));
-    *this->listener = std::thread(&Manager::listener_function, this);
+    this->listener = new std::thread(&Manager::listener_function, this);
 }
 
 // Initialise the servers
@@ -167,19 +166,26 @@ void Manager::finish()
 {
     running_ = false;
 
-    this->listener->join();
-    std::cout << "Joined Python Listener Thread\n";
-
     std::string kill = "kill";
     this->send_to_all_servers((char *)kill.c_str(), 5);
 
+    this->listener->join();
+    std::cout << "Joined Python Listener Thread\n";
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        this->servers[i].join();
+        this -> servers[i].getThread() -> join();
         std::cout << "Joined Server " << i << " Thread\n";
     }
 
-    free(this->listener);
+    for (int i = 0; i < SERVER_COUNT; i++)
+    {
+        this -> servers[i].finish();
+    }
+
+    delete this->listener;
     free(this->servers);
 
     json end_msg = {

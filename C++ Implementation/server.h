@@ -27,7 +27,7 @@ class Server
 {
 private:
     void server_function();
-    void initThread();
+
     Manager *manager;
     char *rcv_buffer;
     int *rcv_n;
@@ -52,7 +52,7 @@ private:
 public:
     Server();
     int getID();
-    void join();
+    void finish();
     void initialise(int id, Manager *manager,
                     int port, int server_socket_address_count);
     void initSocket(int port);
@@ -65,4 +65,6 @@ public:
     int getServerSocketAddress(int server);
 
     inline Database* getDatabase() { return database; }
+
+    std::thread* getThread();
 };

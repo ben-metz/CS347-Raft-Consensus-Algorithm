@@ -36,13 +36,13 @@ void Server::initialise(int id, Manager *manager,
 
     this->initSocket(port);
 
-    this->initThread();
+    this->thread = new std::thread(&Server::server_function, this);
 }
 
 // Join the thread and close the receive socket
-void Server::join()
+void Server::finish()
 {
-    this->thread->join();
+    //his->thread->join();
 
     std::cout << "Closing Server " << this->getID() << " Socket and Freeing Memory..."
               << "\n";
@@ -58,7 +58,7 @@ void Server::join()
     free(this->socket_addr);
     free(this->server_address_added);
 
-    free(this->thread);
+    delete this->thread;
 
     free(this->database->get_size());
     free(this->database->get_data());
@@ -66,6 +66,10 @@ void Server::join()
 
     delete this->raft;
     free(this->raft_response);
+}
+
+std::thread* Server::getThread(){
+    return this -> thread;
 }
 
 // Function to be performed by the server
@@ -157,13 +161,6 @@ void Server::send_details(std::string action)
     mtx.lock();
     this->manager->send_msg(details_json.dump());
     mtx.unlock();
-}
-
-// Initialise the thread with the thread function
-void Server::initThread()
-{
-    this->thread = (std::thread *)malloc(sizeof(std::thread));
-    *this->thread = std::thread(&Server::server_function, this);
 }
 
 // Initialise the listening socket
