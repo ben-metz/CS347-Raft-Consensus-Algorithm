@@ -55,7 +55,6 @@ public:
     ~Server();
     
     int getID();
-    void finish();
     void initialise(int id, Manager *manager,
                     int port, int server_socket_address_count);
     void initSocket(int port);

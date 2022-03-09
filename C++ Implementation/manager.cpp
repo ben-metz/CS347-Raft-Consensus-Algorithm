@@ -10,27 +10,25 @@ Manager::Manager() {}
 
 Manager::~Manager()
 {
-    running_ = false;
-
-    std::string kill = "kill";
-    this->send_to_all_servers((char *)kill.c_str(), 5);
+    running_ = false; // Make threads exit their functions
 
     this->listener->join();
     std::cout << "Joined Python Listener Thread\n";
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
+    // Join the server threads
     for (int i = 0; i < SERVER_COUNT; i++)
     {
         this -> servers[i]->getThread() -> join();
         std::cout << "Joined Server " << i << " Thread\n";
     }
 
+    // Delete server instances
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        this -> servers[i]->finish();
+        delete this -> servers[i];
     }
 
+    // Free listener and servers
     delete this->listener;
     this->listener = nullptr;
     free(this->servers);
@@ -63,7 +61,7 @@ Manager::~Manager()
 }
 
 // Initialise all components of the manager
-void Manager::initialise(int updates_per_second)
+void Manager::initialise()
 {
     this->server_addresses = (struct server_socket_address *)malloc(sizeof(struct server_socket_address) * SERVER_COUNT);
 
@@ -71,7 +69,7 @@ void Manager::initialise(int updates_per_second)
 
     this->init_listener();
 
-    this->init_servers(updates_per_second);
+    this->init_servers();
 }
 
 // Initialise the Python communication sockets
@@ -188,7 +186,7 @@ void Manager::init_listener()
 }
 
 // Initialise the servers
-void Manager::init_servers(int updates_per_second)
+void Manager::init_servers()
 {
     this->servers = (Server **)malloc(sizeof(Server*) * SERVER_COUNT);
 
@@ -213,68 +211,6 @@ void Manager::init_servers(int updates_per_second)
     {
         this->servers[i]->addToNeighbours();
     }
-}
-
-// When completed, join server threads and free stuff (not everything freed yet, bug fixing :( )
-void Manager::finish()
-{
-    running_ = false;
-
-    std::string kill = "kill";
-    this->send_to_all_servers((char *)kill.c_str(), 5);
-
-    this->listener->join();
-    std::cout << "Joined Python Listener Thread\n";
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    for (int i = 0; i < SERVER_COUNT; i++)
-    {
-        this -> servers[i]->getThread() -> join();
-        std::cout << "Joined Server " << i << " Thread\n";
-    }
-
-    for (int i = 0; i < SERVER_COUNT; i++)
-    {
-        this -> servers[i]->finish();
-    }
-
-    delete this->listener;
-    this->listener = nullptr;
-
-    for (int i = 0; i < SERVER_COUNT; i++)
-    {
-        delete this->servers[i];
-        this->servers[i] = nullptr;
-    }
-
-    free(this->servers);
-    this->servers = nullptr;
-
-    json end_msg = {
-        {"message_type", "connection_status"},
-        {"data", "ended"}};
-
-    this->send_msg(end_msg.dump());
-
-    std::cout << "Closing Python Communication Sockets and Freeing Memory...\n";
-    close(*(this->receive_socket_fd));
-    close(*(this->send_socket_fd));
-
-    free(this->receive_socket_fd);
-    this->receive_socket_fd = nullptr;
-    free(this->send_socket_fd);
-    this->send_socket_fd = nullptr;
-
-    free(this->rcv_buffer);
-    this->rcv_buffer = nullptr;
-    free(this->rcv_n);
-    this->rcv_n = nullptr;
-    free(this->rcv_socklen);
-    this->rcv_socklen = nullptr;
-
-    free(this->server_addresses);
-    this->server_addresses = nullptr;
 }
 
 // Sends a message back to the client

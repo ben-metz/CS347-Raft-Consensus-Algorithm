@@ -3,16 +3,11 @@
 #include <cstdlib>
 #include <signal.h>
 
-#define MESSAGES_PER_SECOND 5
-
 Manager *manager;
 
 void signal_callback_handler(int signum) {
    std::cout << "\nCaught Signal: " << signum << "\n";
 
-   manager -> finish();
-
-   // free(manager);
    delete manager;
    manager = nullptr;
 
@@ -21,10 +16,8 @@ void signal_callback_handler(int signum) {
 }
 
 int main(){
-   // manager = (Manager*) malloc(sizeof(Manager));
-   // *manager = Manager();
    manager = new Manager();
-   manager -> initialise(MESSAGES_PER_SECOND);
+   manager -> initialise();
 
    signal(SIGINT, signal_callback_handler);
 
