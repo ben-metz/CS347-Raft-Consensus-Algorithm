@@ -280,8 +280,6 @@ void Raft_Node::input_message(char *msg)
     {
         int sender_id = deserialised_json["sender_id"].get<int>();
 
-        // TODO: check for greater term and step down if applicable
-
         if (!deserialised_json["data"]["success"].get<bool>())
         {
             nextIndex[sender_id]--;
