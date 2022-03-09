@@ -56,11 +56,8 @@ void Raft_Node::run()
 
         // send heartbeats
         for (int serverID = 0; serverID < server_count; serverID++)
-            if (serverID < candidate_id){
+            if (serverID != candidate_id)
                 this->server->sendToServer(this->server->getServerSocketAddress(serverID), this->getAppendEntriesMessage(serverID));
-            } else if (serverID > candidate_id) {
-                this->server->sendToServer(this->server->getServerSocketAddress(serverID-1), this->getAppendEntriesMessage(serverID));
-            }
     }
 
     // If election timer expired, request votes from neighbours

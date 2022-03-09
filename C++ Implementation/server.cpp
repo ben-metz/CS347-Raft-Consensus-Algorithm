@@ -271,8 +271,8 @@ struct server_socket_address *Server::getSocket()
 
 int Server::getServerSocketAddress(int server)
 {
-    if (server >= EXPECTED_NEIGHBOURS)
-        server = EXPECTED_NEIGHBOURS - 1;
+    if (server > this->raft->getID())
+        server--;
 
     return this->neighbours[server]->server_socket_address_id;
 }
