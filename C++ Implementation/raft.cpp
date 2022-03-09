@@ -205,6 +205,9 @@ void Raft_Node::input_message(char *msg)
             this->setState(FOLLOWER);
         }
 
+        // Update the leader ID to allow for data forwarding
+        leader_id = deserialised_json["data"]["leaderId"].get<int>();
+
         // Receiver rule 1
         // Reply false if term < currentTerm (§5.1)
         if (deserialised_json["data"]["term"].get<int>() < term)
@@ -284,8 +287,6 @@ void Raft_Node::input_message(char *msg)
             nextIndex[sender_id]--;
             if (nextIndex[sender_id] < 0)
                 nextIndex[sender_id] = 0;
-
-            printf("Got false success from server %d\n", sender_id);
         }
         else
         {
@@ -317,18 +318,24 @@ void Raft_Node::input_message(char *msg)
         }
     }
 
-    // If the message is a data update to the leader then
-    // add it to the list of not committed data changes
-    // TODO: Maybe forward the update to the leader?
-    if (deserialised_json["message_type"] == "data_update" &&
-        this->state == LEADER)
+    // Handle a data update message
+    if (deserialised_json["message_type"] == "data_update")
     {
-        LogEntry entry;
-        entry.term = this->term;
-        entry.index = deserialised_json["data"]["index"].get<int>();
-        entry.value = deserialised_json["data"]["value"].get<int>();
+        // Apply change to the log if leader
+        if (this->state == LEADER)
+        {
+            LogEntry entry;
+            entry.term = this->term;
+            entry.index = deserialised_json["data"]["index"].get<int>();
+            entry.value = deserialised_json["data"]["value"].get<int>();
 
-        this->log.push_back(entry);
+            this->log.push_back(entry);
+        }
+        // Otherwise forward it to the leader (if one exists)
+        else if (leader_id >= 0)
+        {
+            this->server->sendToServer(this->server->getServerSocketAddress(leader_id), msg);
+        }
     }
 }
 
