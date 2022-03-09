@@ -16,7 +16,7 @@ Server::Server() {}
 
 Server::~Server()
 {
-    std::cout << "Closing Server " << this->getID() << " Socket and Freeing Memory..."
+   std::cout << "Closing Server " << this->getID() << " Socket and Freeing Memory..."
               << "\n";
     close(*(this->socket_addr->fd));
 
@@ -37,10 +37,6 @@ Server::~Server()
     free(this->server_address_added);
     this->server_address_added = nullptr;
 
-    delete this->thread;
-    this->thread = nullptr;
-
-    // free(this->database);
     delete this->database;
     this->database = nullptr;
 
@@ -54,8 +50,8 @@ Server::~Server()
 void Server::initialise(int id, Manager *manager,
                         int port, int server_socket_address_count)
 {
-    // this->database = (Database *)malloc(sizeof(Database));
-    // *this->database = Database(DATABASE_SIZE);
+    server_id = id;
+
     this->database = new Database(DATABASE_SIZE);
     this->manager = manager;
 
@@ -73,48 +69,12 @@ void Server::initialise(int id, Manager *manager,
 
     this->initSocket(port);
 
-    this->thread = new std::thread(&Server::server_function, this);
-}
-
-// Join the thread and close the receive socket
-void Server::finish()
-{
-    std::cout << "Closing Server " << this->getID() << " Socket and Freeing Memory..."
-              << "\n";
-    close(*(this->socket_addr->fd));
-
-    free(this->socket_addr->fd);
-    this->socket_addr->fd = nullptr;
-
-    free(this->rcv_buffer);
-    this->rcv_buffer = nullptr;
-    free(this->rcv_n);
-    this->rcv_n = nullptr;
-    free(this->rcv_socklen);
-    this->rcv_socklen = nullptr;
-
-    free(this->neighbours);
-    this->neighbours = nullptr;
-    free(this->socket_addr);
-    this->socket_addr = nullptr;
-    free(this->server_address_added);
-    this->server_address_added = nullptr;
-
-    delete this->thread;
-    this->thread = nullptr;
-
-    // free(this->database);
-    delete this->database;
-    this->database = nullptr;
-
-    delete this->raft;
-    this->raft = nullptr;
-    free(this->raft_response);
-    this->raft_response = nullptr;
+    // this->thread = new std::thread(&Server::server_function, this);
+    this->thread = std::thread(&Server::server_function, this);
 }
 
 std::thread* Server::getThread(){
-    return this -> thread;
+    return &this -> thread;
 }
 
 // Function to be performed by the server
@@ -154,19 +114,22 @@ void Server::server_function()
         // Reduce active waiting load by sleeping for 1ms
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 
 // Handles messages received on the receive socket
 void Server::handleMessage(char *msg)
 {
-    json deserialised_json = json::parse(std::string(msg));
+    std::string strMsg(msg);
 
-    // if (deserialised_json["message_type"] == "data_update")
-    // {
-    //     this->database->set_value(deserialised_json["data"]["index"], deserialised_json["data"]["value"]);
-    //     this->send_details("Database Update");
-    // }
-    // else
+    if (strMsg == "kill")
+    {
+        return;
+    }
+
+    json deserialised_json = json::parse(strMsg);
+
     if (deserialised_json["message_type"] == "set_server_status")
     {
         this->set_status(deserialised_json["data"]["stopped"].get<int>());
@@ -258,7 +221,7 @@ void Server::addToNeighbours()
 // Return the ID of server
 int Server::getID()
 {
-    return this->raft->getID();
+    return server_id;
 }
 
 // Adds a socket to the server_socket_addresss array of the server

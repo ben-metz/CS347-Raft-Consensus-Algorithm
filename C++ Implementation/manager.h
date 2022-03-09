@@ -33,7 +33,7 @@ private:
     struct sockaddr_in send_addr;
     struct sockaddr_in rcv_addr;
     Server **servers;
-    std::thread *listener;
+    std::thread listener;
 
     void init_sockets();
     void init_servers(int updates_per_second);
@@ -47,11 +47,9 @@ private:
     void update_server_value(int *update_properties);
 
 public:
-    Manager();
+    Manager(int updates_per_second);
     ~Manager();
 
-    void initialise(int updates_per_second);
     void send_msg(std::string msg);
-    void finish();
     void addSocket(struct server_socket_address *addr);
 };

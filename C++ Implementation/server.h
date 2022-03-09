@@ -30,6 +30,7 @@ class Server
 private:
     void server_function();
 
+    int server_id;
     Manager *manager;
     char *rcv_buffer;
     int *rcv_n;
@@ -39,7 +40,7 @@ private:
     int getSocketIndex(int server_id);
 
     struct server_socket_address *socket_addr;
-    std::thread *thread;
+    std::thread thread;
     Database *database;
     
     void handleMessage(char *msg);
@@ -49,13 +50,11 @@ private:
 
     Raft_Node *raft;
     char *raft_response;
-
 public:
     Server();
     ~Server();
-    
+
     int getID();
-    void finish();
     void initialise(int id, Manager *manager,
                     int port, int server_socket_address_count);
     void initSocket(int port);
@@ -66,6 +65,8 @@ public:
     void sendToServer(int id, std::string msg);
     void send_details(std::string action);
     int getServerSocketAddress(int server);
+
+    inline bool isRunning() { return !stopped; }
 
     inline Database* getDatabase() { return database; }
 
