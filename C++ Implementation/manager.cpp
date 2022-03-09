@@ -6,7 +6,7 @@ using json = nlohmann::json;
 std::atomic_bool running_(true);
 
 // Manager constructor, define socket and servers
-Manager::Manager(int updates_per_second)
+Manager::Manager()
     : listener{}
 {
     this->server_addresses = (struct server_socket_address *)malloc(sizeof(struct server_socket_address) * SERVER_COUNT);
@@ -15,22 +15,18 @@ Manager::Manager(int updates_per_second)
 
     this->init_listener();
 
-    this->init_servers(updates_per_second);
+    this->init_servers();
 }
 
 Manager::~Manager()
 {
-    running_ = false;
-
-    std::string kill = "kill";
-    this->send_to_all_servers((char *)kill.c_str(), 5);
+    running_ = false; // Make threads exit their functions
 
     if (this->listener.joinable() && this->listener.get_id() != std::this_thread::get_id())
         this->listener.join();
     std::cout << "Joined Python Listener Thread\n";
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
+    // Join the server threads
     for (int i = 0; i < SERVER_COUNT; i++)
     {
         std::thread* serverThread = this->servers[i]->getThread();
@@ -40,6 +36,7 @@ Manager::~Manager()
         std::cout << "Joined Server " << i << " Thread\n";
     }
 
+    // Delete server instances
     for (int i = 0; i < SERVER_COUNT; i++)
     {
         delete this->servers[i];
@@ -190,7 +187,7 @@ void Manager::init_listener()
 }
 
 // Initialise the servers
-void Manager::init_servers(int updates_per_second)
+void Manager::init_servers()
 {
     this->servers = (Server **)malloc(sizeof(Server*) * SERVER_COUNT);
 

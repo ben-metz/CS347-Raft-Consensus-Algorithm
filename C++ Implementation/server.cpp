@@ -69,7 +69,6 @@ void Server::initialise(int id, Manager *manager,
 
     this->initSocket(port);
 
-    // this->thread = new std::thread(&Server::server_function, this);
     this->thread = std::thread(&Server::server_function, this);
 }
 
@@ -121,14 +120,7 @@ void Server::server_function()
 // Handles messages received on the receive socket
 void Server::handleMessage(char *msg)
 {
-    std::string strMsg(msg);
-
-    if (strMsg == "kill")
-    {
-        return;
-    }
-
-    json deserialised_json = json::parse(strMsg);
+    json deserialised_json = json::parse(std::string(msg));
 
     if (deserialised_json["message_type"] == "set_server_status")
     {

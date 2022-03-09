@@ -3,8 +3,6 @@
 #include <cstdlib>
 #include <signal.h>
 
-#define MESSAGES_PER_SECOND 5
-
 Manager *manager;
 
 void signal_callback_handler(int signum) {

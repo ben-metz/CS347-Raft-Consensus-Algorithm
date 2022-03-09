@@ -36,7 +36,7 @@ private:
     std::thread listener;
 
     void init_sockets();
-    void init_servers(int updates_per_second);
+    void init_servers();
     void init_listener();
     void listener_function();
 
@@ -47,7 +47,7 @@ private:
     void update_server_value(int *update_properties);
 
 public:
-    Manager(int updates_per_second);
+    Manager();
     ~Manager();
 
     void send_msg(std::string msg);
