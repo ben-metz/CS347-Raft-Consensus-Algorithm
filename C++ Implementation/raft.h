@@ -37,8 +37,8 @@ private:
     int election_timeout;
     int heartbeat_timeout;
 
-    long *time_of_last_message;
-    long *time_of_last_heartbeat;
+    long time_of_last_message;
+    long time_of_last_heartbeat;
 
     int server_count;
 

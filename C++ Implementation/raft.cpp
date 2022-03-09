@@ -8,18 +8,20 @@ using json = nlohmann::json;
 
 // Initialiser for Raft_Node
 Raft_Node::Raft_Node(int id, int server_count, Server *server)
-    : commitIndex(-1)
+    : candidate_id(id)
+    , term(0)
+    , leader_id(-1) // -1 if no leader or leader, id of leader otherwise
+    , state(FOLLOWER)
+    , time_of_last_message(0L)
+    , time_of_last_heartbeat(0L)
+    , voted_for_id(-1)
+    , vote_count(0)
+    , server_count(server_count)
+    , server(server)
+    , commitIndex(-1)
     , lastApplied(-1)
     , log()
 {
-    this->candidate_id = id;
-    this->term = 0;
-    this->leader_id = -1; // -1 if no leader or leader, id of leader otherwise
-    this->state = FOLLOWER;
-    this->time_of_last_message = (long *)malloc(sizeof(long));
-    *(this->time_of_last_message) = 0L;
-    this->time_of_last_heartbeat = (long *)malloc(sizeof(long));
-    *(this->time_of_last_heartbeat) = 0L;
     this->resetElectionTimer();
 
     this->nextIndex = (int*)calloc(sizeof(int), server_count);
@@ -29,19 +31,10 @@ Raft_Node::Raft_Node(int id, int server_count, Server *server)
     this->matchIndex = (int*)calloc(sizeof(int), server_count);
     for (int i = 0; i < server_count; i++)
         this->matchIndex[i] = 0;
-
-    this->voted_for_id = -1;
-    this->vote_count = 0;
-
-    this->server_count = server_count;
-
-    this->server = server;
 }
 
 Raft_Node::~Raft_Node()
 {
-    free(this->time_of_last_message);
-    free(this->time_of_last_heartbeat);
     free(this->nextIndex);
     free(this->matchIndex);
 }
@@ -91,7 +84,7 @@ void Raft_Node::resetElectionTimer(){
     this->election_timeout = getElectionTimeout();
 
     // Reset time of last interaction if timeout reached
-    *(this->time_of_last_message) = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 // When a server receives a message, it is fed into this function where
@@ -99,7 +92,7 @@ void Raft_Node::resetElectionTimer(){
 void Raft_Node::input_message(char *msg)
 {
     // Reset countdown every time message received (needs to be changed to be only when heartbeat received from leader)
-    *(this->time_of_last_message) = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     json deserialised_json = json::parse(std::string(msg));
 
@@ -342,10 +335,10 @@ bool Raft_Node::checkElectionTimer()
 {
     auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    if (millisec_since_epoch - *(this->time_of_last_message) > this->election_timeout)
+    if (millisec_since_epoch - this->time_of_last_message > this->election_timeout)
     {
         // Reset time of last interaction if timeout reached
-        *(this->time_of_last_message) = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
         return true;
     }
@@ -360,10 +353,10 @@ bool Raft_Node::checkHeartbeatTimer()
 {
     auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    if (millisec_since_epoch - *(this->time_of_last_heartbeat) > HEARTBEAT_TIMEOUT)
+    if (millisec_since_epoch - this->time_of_last_heartbeat > HEARTBEAT_TIMEOUT)
     {
         // Reset time of last interaction if timeout reached
-        *(this->time_of_last_heartbeat) = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        this->time_of_last_heartbeat = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
         return true;
     }
