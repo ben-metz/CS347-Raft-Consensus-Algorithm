@@ -13,6 +13,7 @@ void signal_callback_handler(int signum) {
    manager -> finish();
 
    free(manager);
+   manager = nullptr;
 
    // Terminate program
    exit(signum);

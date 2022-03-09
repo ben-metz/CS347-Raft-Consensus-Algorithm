@@ -47,23 +47,34 @@ void Server::finish()
     close(*(this->socket_addr->fd));
 
     free(this->socket_addr->fd);
+    this->socket_addr->fd = nullptr;
 
     free(this->rcv_buffer);
+    this->rcv_buffer = nullptr;
     free(this->rcv_n);
+    this->rcv_n = nullptr;
     free(this->rcv_socklen);
+    this->rcv_socklen = nullptr;
 
     free(this->neighbours);
+    this->neighbours = nullptr;
     free(this->socket_addr);
+    this->socket_addr = nullptr;
     free(this->server_address_added);
+    this->server_address_added = nullptr;
 
     delete this->thread;
+    this->thread = nullptr;
 
     free(this->database->get_size());
     free(this->database->get_data());
     free(this->database);
+    this->database = nullptr;
 
     delete this->raft;
+    this->raft = nullptr;
     free(this->raft_response);
+    this->raft_response = nullptr;
 }
 
 std::thread* Server::getThread(){

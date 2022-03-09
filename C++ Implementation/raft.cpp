@@ -21,6 +21,9 @@ Raft_Node::Raft_Node(int id, int server_count, Server *server)
     , commitIndex(-1)
     , lastApplied(-1)
     , log()
+    // Set in constructor body
+    , nextIndex(nullptr)
+    , matchIndex(nullptr)
 {
     this->resetElectionTimer();
 
@@ -36,7 +39,10 @@ Raft_Node::Raft_Node(int id, int server_count, Server *server)
 Raft_Node::~Raft_Node()
 {
     free(this->nextIndex);
+    this->nextIndex = nullptr;
+    
     free(this->matchIndex);
+    this->matchIndex = nullptr;
 }
 
 // This function is run every millisecond, it checks the timer to see if

@@ -186,7 +186,9 @@ void Manager::finish()
     }
 
     delete this->listener;
+    this->listener = nullptr;
     free(this->servers);
+    this->servers = nullptr;
 
     json end_msg = {
         {"message_type", "connection_status"},
@@ -199,13 +201,19 @@ void Manager::finish()
     close(*(this->send_socket_fd));
 
     free(this->receive_socket_fd);
+    this->receive_socket_fd = nullptr;
     free(this->send_socket_fd);
+    this->send_socket_fd = nullptr;
 
     free(this->rcv_buffer);
+    this->rcv_buffer = nullptr;
     free(this->rcv_n);
+    this->rcv_n = nullptr;
     free(this->rcv_socklen);
+    this->rcv_socklen = nullptr;
 
     free(this->server_addresses);
+    this->server_addresses = nullptr;
 }
 
 // Sends a message back to the client
