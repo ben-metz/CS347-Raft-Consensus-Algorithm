@@ -25,7 +25,7 @@ void signal_callback_handler(int signum) {
 int main(){
    signal(SIGINT, signal_callback_handler);
 
-   manager = new Manager(MESSAGES_PER_SECOND);
+   manager = new Manager();
 
    while(true);
 }
