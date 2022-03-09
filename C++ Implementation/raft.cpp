@@ -7,7 +7,7 @@
 using json = nlohmann::json;
 
 // Initialiser for Raft_Node
-Raft_Node::Raft_Node(int id, float server_count, Server *server)
+Raft_Node::Raft_Node(int id, int server_count, Server *server)
     : commitIndex(-1)
     , lastApplied(-1)
     , log()
@@ -166,7 +166,7 @@ void Raft_Node::input_message(char *msg)
         // If vote granted, add to count
         if (deserialised_json["data"]["vote_granted"] == true && this -> state == CANDIDATE)
         {            
-            if (++this->vote_count > this->server_count / 2)
+            if (++this->vote_count > this->server_count / 2.0f)
             {
                 this->setState(LEADER);
 

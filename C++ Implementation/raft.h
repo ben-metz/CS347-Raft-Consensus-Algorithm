@@ -40,7 +40,7 @@ private:
     long *time_of_last_message;
     long *time_of_last_heartbeat;
 
-    float server_count;
+    int server_count;
 
     int term;
     int candidate_id;
@@ -53,7 +53,7 @@ private:
     Server *server; // Associated server
 
 public:
-    Raft_Node(int id, float server_count, Server *server);
+    Raft_Node(int id, int server_count, Server *server);
     ~Raft_Node();
 
     void run();
