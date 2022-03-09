@@ -9,6 +9,8 @@ class Interface:
         self.index = index
         self.socket_details = socket_details
 
+        self.last_message = ""
+
         label = Label(frame, text='Server ' + str(index),
                       font=font)
 
@@ -52,7 +54,18 @@ class Interface:
 
     # Inserts data into multitextbox
     def insert(self, data):
+        # if (data[3] == self.last_message):
+        #     #self.text_box.remove_last()
+        #     self.text_box.set_list(6, data[6])
+        # else:
+        #     self.last_message = data[3]
+        
         self.text_box.insert(0, data)
+        #self.text_box.remove_last()
+
+    def clear(self):
+        self.text_box.clear()
+        self.last_message = ""
 
     # Sends status change message to server running on C++ program
     def set_stopped(self, new_status):

@@ -20,7 +20,7 @@ class MultiListbox(Frame):
             lb = Listbox(
                 frame,
                 width=w,
-                height=10,
+                height=8,
                 borderwidth=0,
                 selectborderwidth=0,
                 relief=FLAT,
@@ -124,3 +124,16 @@ class MultiListbox(Frame):
     def selection_set(self, first, last=None):
         for l in self.lists:
             l.selection_set(first, last)
+
+    def remove_last(self):
+        for l in self.lists:
+            l.delete(0, 0)
+
+    def set_list(self, list_index, new_val):
+        list = self.lists[list_index]
+        list.delete(0, 0)
+        list.insert(0, new_val)
+
+    def clear(self):
+        for l in self.lists:
+            l.delete(0, END)

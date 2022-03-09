@@ -9,6 +9,8 @@ import threading
 import time
 import json
 
+import subprocess
+
 # Sends command when send button pressed
 def send_command():
     # Get the values from the send interface
@@ -35,6 +37,34 @@ def send_command():
     except:
         print('Error:\tInvalid Input')
 
+# Clears the server interface logs
+def clear_interfaces():
+    for interface in interfaces:
+        interface.clear()
+
+# Blocks messages
+def block_messages():
+    global blocked, connected
+
+    if (connected and not blocked):
+        blocked = True
+        con.configure(text='Disconnected', bg='red')
+    elif (connected and blocked):
+        blocked = False
+        con.configure(text='Connected', bg='green')
+    elif (not connected):
+        blocked = True
+        con.configure(text='Disconnected', bg='red')
+
+# Terminates the current raft subprocess and spawns another
+def restart_raft():
+    global proc
+
+    proc.terminate()
+
+    proc = subprocess.Popen(["../Raft_Implementation/manager"])
+
+    clear_interfaces()
 
 # Takes incoming packets, splits up and places in correct text box
 def handle_packets(client_receive_socket):
@@ -49,9 +79,10 @@ def handle_packets(client_receive_socket):
             global start_time
 
             if (decoded['message_type'] == "details_update"):
-                global connected, states
+                global connected, states, blocked
                 if connected == False:
                     connected = True
+                    blocked = False
 
                     start_time = round(time.time(), 2)
 
@@ -63,15 +94,17 @@ def handle_packets(client_receive_socket):
                 # If details update, display in respective server
                 data = decoded['data']
 
-                interfaces[int(data['id'])].insert((states[data['state']],
-                                                        data['term'], data['vote'], data['action'],
-                                                        data['database'], data['lastCommited'], str(round(time.time() - start_time, 2))))
+                if (not blocked):
+                    interfaces[int(data['id'])].insert((states[data['state']],
+                                                            data['term'], data['vote'], data['action'],
+                                                            data['database'], data['lastCommited'], str(round(time.time() - start_time, 2))))
             elif (decoded['message_type'] == "connection_status"):
                 # If connection status, update connected status
                 if decoded['data'] == 'started':
                     start_time = round(time.time(), 2)
 
                     connected = True
+                    blocked = False
 
                     con.configure(text='Connected', bg='green')
 
@@ -87,11 +120,11 @@ def handle_packets(client_receive_socket):
                         interfaces[i].disconnected()
 
                     connected = False
+                    blocked = True
 
                     continue
         except:
             print('Error:\tDecode Error')
-
 
 def main():
     # Initialise thread for receiving packets
@@ -111,6 +144,7 @@ if __name__ == '__main__':
     client_send_port = 12346
 
     connected = False
+    blocked = False
 
     start_time = 0
 
@@ -149,9 +183,21 @@ if __name__ == '__main__':
     root_title.configure(foreground=textCol, background=bgCol)
     root_title.grid(row=0, column=3)
 
-    con = Button(root_frame, text='Disonnected', bg='red',
+    # Button frame
+    button_frame = Frame(root_frame, bg=bgCol)
+    button_frame.grid(row=0, column=3, sticky=W)
+
+    con = Button(button_frame, text='Clear', bg='red', command=block_messages,
                  borderwidth=0, highlightthickness=0)
-    con.grid(row=0, column=3, sticky=W)
+    con.grid(row=0, column=1)
+
+    clear = Button(root_frame, text='Clear', bg='red',command=clear_interfaces,
+                 borderwidth=0, highlightthickness=0)
+    clear.grid(row=0, column=3, sticky=E)
+
+    restart = Button(button_frame, text='Restart', bg='red',command=restart_raft,
+                 borderwidth=0, highlightthickness=0)
+    restart.grid(row=0, column=0)
 
     # Details frame
     details_frame = Frame(root_frame, bg=bgCol)
@@ -205,5 +251,13 @@ if __name__ == '__main__':
     # Add the server displays
     for i in range(0, 5):
         interfaces.append(Interface(details_frame, textCol, bgCol, fontStyle, i, [client_send_socket, client_ip, client_send_port]))
+
+    # Begin raft c++ implementation
+    print("Building C++ Raft Implementation...")
+    make_proc = subprocess.Popen(["make"], stdout=subprocess.PIPE, cwd="../Raft_Implementation/")
+    make_proc.wait()
+    print("Completed")
+
+    proc = subprocess.Popen(["../Raft_Implementation/manager"])
 
     main()

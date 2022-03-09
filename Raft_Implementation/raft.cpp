@@ -157,7 +157,7 @@ void Raft_Node::input_message(char *msg)
         (deserialised_json["response"] == "true"))
     {
         std::ostringstream s;
-        s << "Vote Response: " << deserialised_json["data"]["vote_granted"] << ' ' << deserialised_json["sender_id"];
+        s << "Vote Response from " << deserialised_json["sender_id"] << ": " << deserialised_json["data"]["vote_granted"];
         std::string resp(s.str());
 
         this->server->send_details(resp);
@@ -189,7 +189,12 @@ void Raft_Node::input_message(char *msg)
     if ((deserialised_json["message_type"] == "append_entries") &&
         (deserialised_json["response"] == "false"))
     {
-        this->server->send_details("AppendEntry RPC Received");
+
+        std::ostringstream s;
+        s << "AppendEntry RPC from " << deserialised_json["sender_id"];
+        std::string resp(s.str());
+        
+        this->server->send_details(resp);
 
         int sender_id = deserialised_json["sender_id"].get<int>();
 
@@ -487,15 +492,15 @@ void Raft_Node::setState(int state)
 {
     if (state == 0)
     {
-        this->server->send_details("State change: LEADER");
+        this->server->send_details("State change: Leader");
     }
     else if (state == 1)
     {
-        this->server->send_details("State change: CANDIDATE");
+        this->server->send_details("State change: Candidate");
     }
     else
     {
-        this->server->send_details("State change: FOLLOWER");
+        this->server->send_details("State change: Follower");
     }
 
     this->state = state;

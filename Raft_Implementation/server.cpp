@@ -126,8 +126,6 @@ void Server::handleMessage(char *msg)
     {
         this->set_status(deserialised_json["data"]["stopped"].get<int>());
 
-        this->send_details("Status Change");
-
         this->raft->resetElectionTimer();
     }
     else if (this->stopped == 0)
@@ -138,6 +136,12 @@ void Server::handleMessage(char *msg)
 
 void Server::set_status(int new_status){
     this->stopped = new_status;
+
+    if (new_status == 0){
+        this->send_details("Status Change: Restarted");
+    } else {
+        this->send_details("Status Change: Halted");
+    }
 }
 
 // Function to send details to python client
