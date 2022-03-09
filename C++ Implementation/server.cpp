@@ -66,7 +66,6 @@ void Server::finish()
     delete this->thread;
     this->thread = nullptr;
 
-    free(this->database->get_size());
     free(this->database->get_data());
     free(this->database);
     this->database = nullptr;
@@ -155,7 +154,7 @@ void Server::send_details(std::string action)
     std::ostringstream ss;
 
     // Convert data to string
-    for (int i = 0; i < *database->get_size(); i++)
+    for (int i = 0; i < database->get_size(); i++)
     {
         ss << this->database->get_value(i) << ' ';
     }
