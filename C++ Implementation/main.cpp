@@ -12,7 +12,8 @@ void signal_callback_handler(int signum) {
 
    manager -> finish();
 
-   free(manager);
+   // free(manager);
+   delete manager;
    manager = nullptr;
 
    // Terminate program
@@ -20,12 +21,13 @@ void signal_callback_handler(int signum) {
 }
 
 int main(){
-    manager = (Manager*) malloc(sizeof(Manager));
-    *manager = Manager();
-    manager -> initialise(MESSAGES_PER_SECOND);
+   // manager = (Manager*) malloc(sizeof(Manager));
+   // *manager = Manager();
+   manager = new Manager();
+   manager -> initialise(MESSAGES_PER_SECOND);
 
-    signal(SIGINT, signal_callback_handler);
+   signal(SIGINT, signal_callback_handler);
 
-    while(true);
+   while(true);
 }
 

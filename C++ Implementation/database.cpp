@@ -12,6 +12,12 @@ Database::Database(int size)
     }
 }
 
+Database::~Database()
+{
+    free(this->data);
+    this->data = nullptr;
+}
+
 void Database::validate_index(int index)
 {
     if (index < 0)

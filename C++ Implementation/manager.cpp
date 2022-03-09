@@ -8,6 +8,60 @@ std::atomic_bool running_(true);
 // Manager constructor, define socket and servers
 Manager::Manager() {}
 
+Manager::~Manager()
+{
+    running_ = false;
+
+    std::string kill = "kill";
+    this->send_to_all_servers((char *)kill.c_str(), 5);
+
+    this->listener->join();
+    std::cout << "Joined Python Listener Thread\n";
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    for (int i = 0; i < SERVER_COUNT; i++)
+    {
+        this -> servers[i]->getThread() -> join();
+        std::cout << "Joined Server " << i << " Thread\n";
+    }
+
+    for (int i = 0; i < SERVER_COUNT; i++)
+    {
+        this -> servers[i]->finish();
+    }
+
+    delete this->listener;
+    this->listener = nullptr;
+    free(this->servers);
+    this->servers = nullptr;
+
+    json end_msg = {
+        {"message_type", "connection_status"},
+        {"data", "ended"}};
+
+    this->send_msg(end_msg.dump());
+
+    std::cout << "Closing Python Communication Sockets and Freeing Memory...\n";
+    close(*(this->receive_socket_fd));
+    close(*(this->send_socket_fd));
+
+    free(this->receive_socket_fd);
+    this->receive_socket_fd = nullptr;
+    free(this->send_socket_fd);
+    this->send_socket_fd = nullptr;
+
+    free(this->rcv_buffer);
+    this->rcv_buffer = nullptr;
+    free(this->rcv_n);
+    this->rcv_n = nullptr;
+    free(this->rcv_socklen);
+    this->rcv_socklen = nullptr;
+
+    free(this->server_addresses);
+    this->server_addresses = nullptr;
+}
+
 // Initialise all components of the manager
 void Manager::initialise(int updates_per_second)
 {
@@ -136,12 +190,12 @@ void Manager::init_listener()
 // Initialise the servers
 void Manager::init_servers(int updates_per_second)
 {
-    this->servers = (Server *)malloc(sizeof(Server) * SERVER_COUNT);
+    this->servers = (Server **)malloc(sizeof(Server*) * SERVER_COUNT);
 
     // Initialise the server threads
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        this->servers[i] = Server();
+        this->servers[i] = new Server();
     }
 
     using namespace std::chrono;
@@ -150,14 +204,14 @@ void Manager::init_servers(int updates_per_second)
     // Allocate memory, start thread, etc
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        this->servers[i].initialise(i, this, SERVER_START_PORT + i, SERVER_COUNT - 1);
-        this->server_addresses[i] = *this->servers[i].getSocket();
+        this->servers[i]->initialise(i, this, SERVER_START_PORT + i, SERVER_COUNT - 1);
+        this->server_addresses[i] = *this->servers[i]->getSocket();
     }
 
     // Share the sockets to all servers
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        this->servers[i].addToNeighbours();
+        this->servers[i]->addToNeighbours();
     }
 }
 
@@ -176,17 +230,24 @@ void Manager::finish()
 
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        this -> servers[i].getThread() -> join();
+        this -> servers[i]->getThread() -> join();
         std::cout << "Joined Server " << i << " Thread\n";
     }
 
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        this -> servers[i].finish();
+        this -> servers[i]->finish();
     }
 
     delete this->listener;
     this->listener = nullptr;
+
+    for (int i = 0; i < SERVER_COUNT; i++)
+    {
+        delete this->servers[i];
+        this->servers[i] = nullptr;
+    }
+
     free(this->servers);
     this->servers = nullptr;
 
@@ -231,7 +292,7 @@ void Manager::addSocket(struct server_socket_address *addr)
     {
         if (i != addr->server_socket_address_id)
         {
-            servers[i].addSocket(addr);
+            servers[i]->addSocket(addr);
         }
     }
 }

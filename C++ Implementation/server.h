@@ -52,6 +52,8 @@ private:
 
 public:
     Server();
+    ~Server();
+    
     int getID();
     void finish();
     void initialise(int id, Manager *manager,

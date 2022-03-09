@@ -14,12 +14,49 @@ extern std::atomic_bool running_;
 // Server initialiser
 Server::Server() {}
 
+Server::~Server()
+{
+    std::cout << "Closing Server " << this->getID() << " Socket and Freeing Memory..."
+              << "\n";
+    close(*(this->socket_addr->fd));
+
+    free(this->socket_addr->fd);
+    this->socket_addr->fd = nullptr;
+
+    free(this->rcv_buffer);
+    this->rcv_buffer = nullptr;
+    free(this->rcv_n);
+    this->rcv_n = nullptr;
+    free(this->rcv_socklen);
+    this->rcv_socklen = nullptr;
+
+    free(this->neighbours);
+    this->neighbours = nullptr;
+    free(this->socket_addr);
+    this->socket_addr = nullptr;
+    free(this->server_address_added);
+    this->server_address_added = nullptr;
+
+    delete this->thread;
+    this->thread = nullptr;
+
+    // free(this->database);
+    delete this->database;
+    this->database = nullptr;
+
+    delete this->raft;
+    this->raft = nullptr;
+    free(this->raft_response);
+    this->raft_response = nullptr;
+}
+
 // Initialise the variables used by the server
 void Server::initialise(int id, Manager *manager,
                         int port, int server_socket_address_count)
 {
-    this->database = (Database *)malloc(sizeof(Database));
-    *this->database = Database(DATABASE_SIZE);
+    // this->database = (Database *)malloc(sizeof(Database));
+    // *this->database = Database(DATABASE_SIZE);
+    this->database = new Database(DATABASE_SIZE);
     this->manager = manager;
 
     this->server_address_added = (int *)malloc(sizeof(int));
@@ -66,8 +103,8 @@ void Server::finish()
     delete this->thread;
     this->thread = nullptr;
 
-    free(this->database->get_data());
-    free(this->database);
+    // free(this->database);
+    delete this->database;
     this->database = nullptr;
 
     delete this->raft;
