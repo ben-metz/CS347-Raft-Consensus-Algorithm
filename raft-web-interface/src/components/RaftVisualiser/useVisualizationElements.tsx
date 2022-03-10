@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { FC } from 'react';
 import { CSSProperties } from 'react';
 import { useState } from 'react';
-import { ArrowHeadType, Elements, Position } from 'react-flow-renderer';
+import { Elements, Position } from 'react-flow-renderer';
 
 const defaultStyle: CSSProperties = {
   width: 80,
@@ -126,6 +126,8 @@ const useVisualizationElements = () => {
   const [elements, setElements] = useState<Elements>(initialElements);
   const leaderServerId = useLeaderServerId();
   const [serverStates] = useObservableState(() => raftClient.latestServerState);
+  let paused = useObservableState(raftClient.latestPaused);
+  paused = paused ?? false;
 
   useEffect(() => {
     if (leaderServerId === null || !serverStates) {
@@ -142,16 +144,18 @@ const useVisualizationElements = () => {
         }
       });
     }
-    for (let i = 0; i < NUM_SERVERS; i++) {
-      elems.push({
-        id: `e${leaderServerId}-${i}`,
-        source: `${leaderServerId}`,
-        target: `${i}`,
-        animated: true,
-      })
+    if (!paused) {
+      for (let i = 0; i < NUM_SERVERS; i++) {
+        elems.push({
+          id: `e${leaderServerId}-${i}`,
+          source: `${leaderServerId}`,
+          target: `${i}`,
+          animated: true,
+        })
+      }  
     }
     setElements(elems)
-  }, [leaderServerId, serverStates]);
+  }, [leaderServerId, serverStates, paused]);
 
   return elements;
 }
