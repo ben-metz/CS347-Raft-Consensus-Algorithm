@@ -8,8 +8,16 @@ import socket
 import threading
 import time
 import json
-
+import math
 import subprocess
+import signal
+import atexit
+
+def exit_handler():
+    global proc, started
+
+    if (started):
+        proc.send_signal(signal.SIGINT)
 
 # Sends command when send button pressed
 def send_command():
@@ -58,13 +66,17 @@ def block_messages():
 
 # Terminates the current raft subprocess and spawns another
 def restart_raft():
-    global proc
+    global proc, started
 
-    proc.terminate()
+    if (started):
+        proc.terminate()
+    else:
+        started = True
+        restart.configure(text='Restart', bg='green')
 
     proc = subprocess.Popen(["../Raft_Implementation/manager"])
 
-    clear_interfaces()
+    #clear_interfaces()
 
 # Takes incoming packets, splits up and places in correct text box
 def handle_packets(client_receive_socket):
@@ -126,6 +138,19 @@ def handle_packets(client_receive_socket):
         except:
             print('Error:\tDecode Error')
 
+def switch_mode():
+    global mode, mode_switch
+    if (mode == 0):
+        view_update_frame.pack_forget()
+        testing_frame.pack(expand=1)
+        mode_switch.configure(text='Switch to Overview')
+        mode = 1
+    else:
+        view_update_frame.pack(expand=1)
+        testing_frame.pack_forget()
+        mode_switch.configure(text='Switch to Testing')
+        mode = 0
+
 def main():
     # Initialise thread for receiving packets
     receiver = threading.Thread(target=handle_packets,
@@ -136,8 +161,15 @@ def main():
     # Begin UI loop
     root.mainloop()
 
+    #proc = subprocess.Popen(["../Raft_Implementation/manager"])
+
 
 if __name__ == '__main__':
+
+    atexit.register(exit_handler)
+
+    mode = 0
+
     # IP of ESP and port used
     client_ip = '127.0.0.1'
     client_receive_port = 12345
@@ -145,6 +177,8 @@ if __name__ == '__main__':
 
     connected = False
     blocked = False
+
+    started = False
 
     start_time = 0
 
@@ -164,54 +198,59 @@ if __name__ == '__main__':
 
     # Tkinter interface construction
     root = Tk()
-    root.geometry('1280x720')
-
-    # Root frame
-    root_frame = Frame(root, bg=bgCol)
-    root_frame.place(relx=.5, rely=.5, anchor='center')
+    root.geometry("1280x720")
 
     fontStyle = tkFont.Font(family='Piboto', size=16)
     titleFont = tkFont.Font(family='Piboto', size=32)
 
-    root.configure(background=bgCol)
-
-    root.title('ESP Interface')
+    root_frame = Frame(root, background=bgCol)
+    root_frame.pack(fill=BOTH, expand=1)
 
     root_title = Label(root_frame,
                        text='Raft Consensus Algorithm Interface',
                        font=titleFont)
     root_title.configure(foreground=textCol, background=bgCol)
-    root_title.grid(row=0, column=3)
+    root_title.pack()
+
+    mode_switch = Button(root_frame, text='Switch to Testing', bg='orange',command=switch_mode,
+                 borderwidth=0, highlightthickness=0)
+    mode_switch.pack()
+
+    # Root frame
+    view_update_frame = Frame(root_frame, bg=bgCol)
+    view_update_frame.pack(expand=1)
+
+    # Root frame
+    testing_frame = Frame(root_frame, bg=bgCol)
+    testing_frame.pack(expand=1)
+
+    root.configure(background=bgCol)
+
+    root.title('ESP Interface')
 
     # Button frame
-    button_frame = Frame(root_frame, bg=bgCol)
-    button_frame.grid(row=0, column=3, sticky=W)
+    button_frame = Frame(view_update_frame, bg=bgCol)
+    button_frame.pack(expand=1)
 
-    con = Button(button_frame, text='Clear', bg='red', command=block_messages,
-                 borderwidth=0, highlightthickness=0)
-    con.grid(row=0, column=1)
+    con = Button(button_frame, text='Disconnected', bg='red', command=block_messages,
+                 borderwidth=0, highlightthickness=0, width=15)
+    con.pack(side=LEFT, padx='25', pady='5')
 
-    clear = Button(root_frame, text='Clear', bg='red',command=clear_interfaces,
-                 borderwidth=0, highlightthickness=0)
-    clear.grid(row=0, column=3, sticky=E)
+    restart = Button(button_frame, text='Start', bg='red',command=restart_raft,
+                 borderwidth=0, highlightthickness=0,width=15)
+    restart.pack(side=LEFT, padx='25')
 
-    restart = Button(button_frame, text='Restart', bg='red',command=restart_raft,
-                 borderwidth=0, highlightthickness=0)
-    restart.grid(row=0, column=0)
+    clear = Button(button_frame, text='Clear', bg='red',command=clear_interfaces,
+                 borderwidth=0, highlightthickness=0, width=15)
+    clear.pack(side=LEFT, padx='25')
 
     # Details frame
-    details_frame = Frame(root_frame, bg=bgCol)
-    details_frame.grid(row=1, column=3)
-
-    details_split = Frame(details_frame, width=40, height=0,
-                          background=bgCol)
-    details_split.grid(row=500, column=2)
-
-    interfaces = []
+    details_frame = Frame(view_update_frame, bg=bgCol)
+    details_frame.pack(expand=1)
 
     # Input frame
-    input_frame = Frame(details_frame, bg=bgCol)
-    input_frame.grid(row=7, column=4)
+    input_frame = Frame(details_frame, bg=bgCol, pady='10')
+    input_frame.pack(expand=1)
 
     # Inputs
     server_label = Label(input_frame, text='Server ID', font=fontStyle)
@@ -243,21 +282,23 @@ if __name__ == '__main__':
                borderwidth=0, highlightthickness=0)
     b.grid(row=4, column=2)
 
-    # Border frames
-    component_split = Frame(root_frame, width=25, height=40,
-                            background=bgCol)
-    component_split.grid(row=500, column=2)
+    interface_frames = []
+
+    for i in range(0, 3):
+        new_frame = Frame(details_frame, bg=bgCol)
+        interface_frames.append(new_frame)
+        new_frame.pack(expand=1)
+
+    interfaces = []
 
     # Add the server displays
     for i in range(0, 5):
-        interfaces.append(Interface(details_frame, textCol, bgCol, fontStyle, i, [client_send_socket, client_ip, client_send_port]))
+        interfaces.append(Interface(interface_frames[math.floor(i/2)], textCol, bgCol, fontStyle, i, [client_send_socket, client_ip, client_send_port]))
 
     # Begin raft c++ implementation
     print("Building C++ Raft Implementation...")
-    make_proc = subprocess.Popen(["make"], stdout=subprocess.PIPE, cwd="../Raft_Implementation/")
-    make_proc.wait()
+    proc = subprocess.Popen(["make"], stdout=subprocess.PIPE, cwd="../Raft_Implementation/")
+    proc.wait()
     print("Completed")
-
-    proc = subprocess.Popen(["../Raft_Implementation/manager"])
 
     main()

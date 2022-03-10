@@ -9,35 +9,37 @@ class Interface:
         self.index = index
         self.socket_details = socket_details
 
+        self.interface_frame =  Frame(frame, bg=bgCol)
+        #self.interface_frame.grid(row=3 * math.floor(index / 2), column=3 * (index - 2* math.floor(index / 2)) + 1)
+        
+        self.interface_frame.pack(side=LEFT)
+            
+
         self.show_repeated_messages = False
 
         self.last_message = ""
 
         self.label_text = StringVar()
         self.label_text.set('Server %d (Current Time: %.2f)' % (index, 0.0))
-        self.label = Label(frame, textvariable=self.label_text,
+        self.label = Label(self.interface_frame, textvariable=self.label_text,
                       font=font)
 
         self.label.configure(foreground=textCol, background=bgCol)
-        self.label.grid(row=3 * math.floor(index / 2), column=3 * (index - 2
-                   * math.floor(index / 2)) + 1)
+        self.label.grid(row=0, column=0)
 
-        self.kill_button = Button(frame, text='Start', width=5, bg='red', fg='black', command=self.kill,
+        self.kill_button = Button(self.interface_frame, text='Start', width=5, bg='red', fg='black', command=self.kill,
                                   borderwidth=0, highlightthickness=0)
-        self.kill_button.grid(row=3 * math.floor(index / 2), column=3 * (index - 2
-                                                                         * math.floor(index / 2)) + 1, sticky=E+S)
+        self.kill_button.grid(row=0, column=0, sticky=E+S, padx='25')
 
-        self.repeat_button = Button(frame, text='Show', width=10, bg='white', fg='black', command=self.toggle_repeated_messages,
+        self.repeat_button = Button(self.interface_frame, text='Show', width=10, bg='orange', fg='black', command=self.toggle_repeated_messages,
                                   borderwidth=0, highlightthickness=0)
         self.update_repeat_text()
-        self.repeat_button.grid(row=3 * math.floor(index / 2), column=3 * (index - 2
-                                                                         * math.floor(index / 2)) + 1, sticky=W+S)
+        self.repeat_button.grid(row=0, column=0, sticky=W+S, padx='25')
 
-        self.text_box = MultiListbox(frame, (('State', 10), ('Term',
+        self.text_box = MultiListbox(self.interface_frame, (('State', 10), ('Term',
                                                              5), ('Vote', 5), ('Action', 25), ('Array', 15),
                                              ('Commit', 7), ('Time', 7)))
-        self.text_box.grid(row=1 + 3 * math.floor(index / 2), column=3 * (index - 2
-                                                                          * math.floor(index / 2)) + 1)
+        self.text_box.grid(row=1, column=0, padx='25', pady='10')
 
     # Disables comms of server if running, else enables comms
     def kill(self):
