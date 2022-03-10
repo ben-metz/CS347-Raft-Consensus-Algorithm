@@ -31,7 +31,7 @@ const ConnectionStatus: FC = () => {
   const [status] = useObservableState(() => raftClient.latestConnectionStatus);
 
   return (
-    <div className="mt-2 sticky top-0 bg-white py-4 z-50">
+    <div className="mt-2 sticky top-0 bg-white dark:bg-black py-4 z-50">
       <div className="mb-4">
         <p className="text-center font-bold text-xl">Connection Status: <span className={getStatusClass(status)}>{getStatusMessage(status)}</span></p>
         <CurrentLeader />
