@@ -1,0 +1,17 @@
+{
+  "name": "interface",
+  "version": "1.0.0",
+  "description": "",
+  "main": "raft_interface.js",
+  "scripts": {
+    "start": "node raft_interface.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "joi": "^17.6.0",
+    "rxjs": "^7.5.5",
+    "ws": "^8.5.0"
+  }
+}

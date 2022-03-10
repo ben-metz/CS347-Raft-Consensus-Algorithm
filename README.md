@@ -30,21 +30,26 @@ https://raft.github.io/raft.pdf
 **Flotsam: Evaluating Implementations of the Raft Consensus Algorithm** https://connorgilbert.com/papers/flotsam.pdf \[ This work presents a system, Flotsam, for empirically testing Raft open-source implementations for errors. Randomized test cases are generated and tested in a virtualized environment based on Docker. Test operations are specified using a general interface to allow new implementations to be simply “plugged in”, and outputs are checked against each other using configurable criteria after injecting. \]
 
 ## Running instructions (Linux is easiest because g++)
-### Terminal 1 (Python Client Directory)
-```python3 udp_server.py```
 
-### Terminal 2 (C++ Implementation Directory)
-```make -B```
+### Prerequisites
+- Python 3.9 or later
+- g++ with support for C++11
+- Linux, native or on WSL2 (Mac OS X uses a different Clang implementation)
+- For WSL2 users: Xming
 
-```./manager```
+### Running Instructions
+1. Navigate to the `Interface` directory.
+2. For WSL2 users: Start XLaunch with `Multiple windows` support > `Start no client` > Check the `No Access Control` option.
+3. Run ```python3 raft_interface.py```.
+4. Wait for build to complete; a window with the Raft algorithm interface should show up.
 
 ## C++ Implementation Details
 
+This section details some of the main inner workings of the C++ code to make it easier to understand.
+
 ### JSON Library
 
-https://github.com/open-source-parsers/jsoncpp
-
-This section details some of the main inner workings of the C++ code to make it easier to understand.
+Inter-process communication between Raft nodes uses the JSON format. C++ JSON library used is [nlohmann/json](https://github.com/nlohmann/json).
 
 ### Server
 - The server class is essentially a sample implementation of a server that this algorithm is designed to run on. 
@@ -59,7 +64,7 @@ This section details some of the main inner workings of the C++ code to make it 
 - Port numbers for various functionality defined in the header, as well as the number of servers (limit of 6 at the moment).
 
 ### Database
-- This is the database that is instantiated on the servers, at the moment, it is an array of 5 integers. This can be expanded later.
+- This is the database that is instantiated on the servers, at the moment, it is an array of 5 integers. This is open to future expansion.
 
 ## Python Interface Details
 - Has send and receive sockets, like the manager class in the C++ implementation, to communicate with the C++ code.
