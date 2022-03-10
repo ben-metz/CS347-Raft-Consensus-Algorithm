@@ -9,7 +9,7 @@ class DetailUpdates {
   latestMessages: Observable<IDetailsUpdateServerMessage>;
 
   constructor() {
-    this.wsClient = new WebSocket('ws://172.28.199.19:8001/');
+    this.wsClient = new WebSocket('ws://localhost:8001/');
     this.wsClient.onopen = () => {
       console.log('ws opened');
     };
