@@ -18,11 +18,19 @@ const parseState = (val: IServerState) => {
   }
 };
 
-const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
+export interface IServerGridProps {
+  serverId: number;
+  showDuplicated: boolean;
+  agGridApi?: GridApi;
+  setAgGridApi: (api: GridApi) => void;
+}
+
+const ServerGrid: FC<IServerGridProps> = ({
   serverId,
-  showDuplicated
+  showDuplicated,
+  agGridApi,
+  setAgGridApi,
 }) => {
-  const [agGridApi, setAgGridApi] = useState<GridApi>();
   const [columnDefs] = useState<ColDef[]>([
       {
         field: "time",

@@ -4,12 +4,14 @@ import { useObservableState } from "observable-hooks";
 import { FC } from "react";
 import { distinct, filter, map, tap } from "rxjs";
 import DuplicatedMessagesButton from "./DuplicatedMessagesButton";
+import GridClearButton from "./GridClearButton";
 import ServerConnectionButton from "./ServerStatusButton";
 
 interface IServerBlockHeaderProps {
   showDuplicated?: boolean;
   serverId: number;
   toggleShowDuplicated: () => void;
+  onGridClear: () => void;
 }
 
 const ServerCurrentTime: FC<{ serverId: number }> = ({ serverId }) => {
@@ -46,7 +48,8 @@ const ServerIsLeader: FC<{ serverId: number }> = ({ serverId }) => {
 const ServerBlockHeader: FC<IServerBlockHeaderProps> = ({
   showDuplicated,
   serverId,
-  toggleShowDuplicated
+  toggleShowDuplicated,
+  onGridClear
 }) => {
   return (
     <>
@@ -54,6 +57,7 @@ const ServerBlockHeader: FC<IServerBlockHeaderProps> = ({
       <ServerCurrentTime serverId={serverId} />
       <div className="mb-2 flex justify-between">
         <DuplicatedMessagesButton serverId={serverId} showDuplicated={showDuplicated} onClick={toggleShowDuplicated} />
+        <GridClearButton onClick={onGridClear} />
         <ServerConnectionButton serverId={serverId} />
       </div>
     </>
