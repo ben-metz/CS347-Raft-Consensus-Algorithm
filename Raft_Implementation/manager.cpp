@@ -216,7 +216,7 @@ void Manager::init_servers()
 
 // Sends a message back to the client
 void Manager::send_msg(std::string msg)
-{
+{  
     sendto(*(this->send_socket_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
            MSG_CONFIRM, (const struct sockaddr *)&(this->send_addr),
            sizeof(this->send_addr));
