@@ -18,7 +18,7 @@ class RaftClient {
 
   latestPaused: Observable<boolean>;
 
-  latestDetailsUpdateMessages: Observable<IDetailsUpdateServerMessage>;
+  latestDetailsUpdateMessages: Observable<IDetailsUpdateServerMessage & { timestamp: number; time: number }>;
 
   private latestServerStateSubject: BehaviorSubject<IServerStates>;
 
@@ -30,8 +30,6 @@ class RaftClient {
   private startTime: Date;
 
   constructor() {
-    this.startTime = new Date();
-    // TODO: Add mechanism to detect initial state of server
     this.latestServerStateSubject = new BehaviorSubject<IServerStates>({
       0: IServerStatusValue.RESTARTED,
       1: IServerStatusValue.RESTARTED,
@@ -53,7 +51,10 @@ class RaftClient {
     this.wsClient = new WebSocket(
       process.env.REACT_APP_WEBSOCKET_URL ?? 'ws://localhost:8001/'
     );
+
+    this.startTime = new Date();
     this.wsClient.onopen = () => {
+      this.startTime = new Date();
       console.log('ws opened');
     };
     this.wsClient.onclose = () => console.log('ws closed');
@@ -130,13 +131,18 @@ class RaftClient {
       message_type: IServerOutgoingMessageType.RESTART,
     }
     if (this.wsClient.readyState !== this.wsClient.CLOSED) {
-      this.wsClient.send(JSON.stringify(message))      
+      this.wsClient.send(JSON.stringify(message));
+      this.startTime = new Date();
     } else {
       this.wsClient = new WebSocket(
         process.env.REACT_APP_WEBSOCKET_URL ?? 'ws://localhost:8001/'
       );
+      this.wsClient.onopen = () => {
+        this.startTime = new Date();
+        console.log('ws opened');
+      };
+      this.wsClient.onclose = () => console.log('ws closed');  
     }
-    this.startTime = new Date();
     this.latestShouldResetSubject.next();
   }
 
