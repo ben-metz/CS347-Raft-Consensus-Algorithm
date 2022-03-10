@@ -79,7 +79,7 @@ wss.on('connection', function connection(ws) {
     const dataJson = JSON.parse(dataString);
     const validationResult = serverMessageJoi.validate(dataJson);
     if(!validationResult.error) {
-      sendServer.send(dataString);
+      sendServer.send(dataString, client_send_port, client_ip);
     }
   });
 });
