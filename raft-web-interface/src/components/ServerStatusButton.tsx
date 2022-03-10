@@ -1,35 +1,43 @@
 import { FC } from "react";
 import { Button } from "react-bootstrap";
-import { IConnectionType } from "../customTypes/server";
+import { IServerStatusValue } from "../customTypes/server";
+import { useObservableState } from "observable-hooks";
+import { raftClient } from "libs/RaftClient";
+import { useCallback } from "react";
 
-const getMessage = (status: IConnectionType) => {
+const getMessage = (status?: IServerStatusValue) => {
   switch (status) {
-    case IConnectionType.STARTED: return "Stop";
-    case IConnectionType.ENDED: return "Start";
-    default: throw new Error('Invalid server status!')
+    case IServerStatusValue.RESTARTED: return "Stop";
+    default: return "Start";
   }
 }
 
-const getButtonClass = (status: IConnectionType) => {
+const getButtonClass = (status?: IServerStatusValue) => {
   switch (status) {
-    case IConnectionType.STARTED: return "bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:bg-slate-300";
-    case IConnectionType.ENDED: return "bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:bg-slate-300";
-    default: throw new Error('Invalid server status!')
+    case IServerStatusValue.RESTARTED: return "bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:bg-slate-300";
+    default: return "bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:bg-slate-300";
   }
 }
 
 export interface IServerConnectionButtonProps {
-  status: IConnectionType;
   serverId: number;
 }
 
 const ServerConnectionButton: FC<IServerConnectionButtonProps> = ({
-  status,
   serverId,
 }) => {
+  const [serverState] = useObservableState(() => raftClient.getLatestServerStateById(serverId));
+  const onClick = useCallback(() => {
+    if (serverState === IServerStatusValue.HALTED) {
+      raftClient.startServer(serverId);
+    } else {
+      raftClient.stopServer(serverId);
+    }
+  }, [serverState, serverId]);
+
   return (
-    <Button className={getButtonClass(status)} disabled>
-      {getMessage(status)}
+    <Button onClick={onClick} className={getButtonClass(serverState)}>
+      {getMessage(serverState)}
     </Button>
   );
 }

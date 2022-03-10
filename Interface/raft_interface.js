@@ -4,6 +4,8 @@ const rxjs = require('rxjs');
 const { spawn } = require('child_process');
 const Joi = require('joi');
 
+let proc;
+
 const setServerStatusJoi = Joi.object({
   message_type: Joi.string().equal('set_server_status').required(),
   data: Joi.object({
@@ -21,9 +23,14 @@ const dataUpdateJoi = Joi.object({
   })
 });
 
+const restartJoi = Joi.object({
+  message_type: Joi.string().equal('restart').required()
+})
+
 const serverMessageJoi = Joi.alternatives().try(
   setServerStatusJoi,
   dataUpdateJoi,
+  restartJoi,
 )
 
 const { Subject } = rxjs;
@@ -78,9 +85,17 @@ wss.on('connection', function connection(ws) {
     const dataString = data.toString();
     const dataJson = JSON.parse(dataString);
     const validationResult = serverMessageJoi.validate(dataJson);
-    if(!validationResult.error) {
-      sendServer.send(dataString, client_send_port, client_ip);
+    if (validationResult.error) {
+      return;
     }
+    if (dataJson.message_type === 'restart') {
+      console.log("Restarting Raft Servers...")
+      proc.kill();
+
+      proc = spawn("../Raft_Implementation/manager");
+      return;
+    }
+    sendServer.send(dataString, client_send_port, client_ip);
   });
 });
 
@@ -107,7 +122,7 @@ async function main() {
 
   console.log("Running manager...")
 
-  const proc = spawn("../Raft_Implementation/manager");
+  proc = spawn("../Raft_Implementation/manager");
 
   proc.stdout.on('data', (data) => {
     console.log(`stdout: ${data}`);

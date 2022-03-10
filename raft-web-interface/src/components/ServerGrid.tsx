@@ -3,10 +3,11 @@ import { FC, useEffect, useState } from 'react';
 
 import 'ag-grid-community/dist/styles/ag-grid.css';
 import 'ag-grid-community/dist/styles/ag-theme-alpine.css';
-import { IServerState } from '../customTypes/server';
+import { IServerState } from 'customTypes/server';
 import { ColDef, GridApi } from 'ag-grid-community';
-import DetailUpdates from '../hooks/DetailUpdates';
+import { raftClient } from 'libs/RaftClient';
 import { distinctUntilChanged, filter, map, tap, timestamp } from 'rxjs';
+import { useCallback } from 'react';
 
 const parseState = (val: IServerState) => {
   switch (val) {
@@ -17,14 +18,12 @@ const parseState = (val: IServerState) => {
   }
 };
 
-const serverMessage = new DetailUpdates();
-
 const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
   serverId,
   showDuplicated
 }) => {
   const [agGridApi, setAgGridApi] = useState<GridApi>();
-  const [startTime] = useState<Date>(new Date());
+  const [startTime, setStartTime] = useState<Date>(new Date());
   const [columnDefs] = useState<ColDef[]>([
       {
         field: "time",
@@ -65,9 +64,17 @@ const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
       },
   ]);
 
+  const resetAll = useCallback(() => {
+    setStartTime(new Date());
+    if (!agGridApi) {
+      return;
+    }
+    agGridApi.setRowData([]);
+  }, [agGridApi])
+
   useEffect(() => {
     if (!agGridApi) return;
-    const subscription = serverMessage.latestMessages.pipe(
+    const subscription = raftClient.latestDetailsUpdateMessages.pipe(
       filter((it) => it.data.id === serverId),
       timestamp(),
       map(({ timestamp, value }) => ({
@@ -89,27 +96,33 @@ const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
               && prev.data.database === next.data.database
           }) : tap(),
     ).subscribe((update) => {
-      agGridApi.applyTransactionAsync({
+      agGridApi.applyTransaction({
         add: [update]
       })
     });
-    return () => subscription.unsubscribe()
-  }, [agGridApi, serverId, showDuplicated, startTime]);
+    const resetSubscription = raftClient.latestShouldReset.subscribe(() => {
+      resetAll();
+    })
+    return () => {
+      subscription.unsubscribe();
+      resetSubscription.unsubscribe();
+    }
+  }, [agGridApi, serverId, showDuplicated, startTime, resetAll]);
 
   return (
       <div className="ag-theme-alpine" style={{height: 360, width: '100%'}}>
-          <AgGridReact
-            columnDefs={columnDefs}
-            rowData={[]}
-            onGridReady={({ api }) => {
-              setAgGridApi(api)
-            }}
-            gridOptions={{
-              headerHeight: 36,
-              rowHeight: 36,
-            }}
-          >
-          </AgGridReact>
+        <AgGridReact
+          columnDefs={columnDefs}
+          rowData={[]}
+          onGridReady={({ api }) => {
+            setAgGridApi(api)
+          }}
+          gridOptions={{
+            headerHeight: 36,
+            rowHeight: 36,
+          }}
+        >
+        </AgGridReact>
       </div>
   );
 };

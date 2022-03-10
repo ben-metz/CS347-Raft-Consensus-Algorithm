@@ -11,6 +11,12 @@ export enum IServerMessageType {
   DETAILS_UPDATE = 'details_update',
 }
 
+export enum IServerOutgoingMessageType {
+  SET_SERVER_STATUS = 'set_server_status',
+  DATA_UPDATE = 'data_update',
+  RESTART = 'restart',
+}
+
 export enum IConnectionType {
   ENDED = 'ended',
   STARTED = 'started'
@@ -93,9 +99,21 @@ export interface ISetServerStatus {
   stopped: IServerStatusValue;
 }
 
-// export interface ISetServerStatusServerMessage extends IServerMessage<ISetServerStatus> {
-//   message_type: IServerMessageType.SET_SERVER_STATUS;
-// }
+export interface ISetServerStatusOutgoingMessage {
+  message_type: IServerOutgoingMessageType.SET_SERVER_STATUS;
+  data: ISetServerStatus;
+}
+
+export interface IDataUpdate {
+  server_id: number;
+  index: number;
+  value: number;
+}
+
+export interface IDataUpdateOutgoingMessage {
+  message_type: IServerOutgoingMessageType.DATA_UPDATE;
+  data: IDataUpdate;
+}
 
 export type ServerMessage = IAppendEntriesFailServerMessage
   | IAppendEntriesSuccessServerMessage
