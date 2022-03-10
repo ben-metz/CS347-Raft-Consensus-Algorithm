@@ -2,7 +2,7 @@ import { IServerState } from "customTypes/server";
 import { raftClient } from "libs/RaftClient";
 import { useObservableState } from "observable-hooks";
 import { FC } from "react";
-import { distinct, filter, map, tap } from "rxjs";
+import { distinct, filter, map } from "rxjs";
 import DuplicatedMessagesButton from "./DuplicatedMessagesButton";
 import GridClearButton from "./GridClearButton";
 import ServerConnectionButton from "./ServerStatusButton";
@@ -30,9 +30,6 @@ const ServerIsLeader: FC<{ serverId: number }> = ({ serverId }) => {
   const [isLeader] = useObservableState(() => raftClient.latestDetailsUpdateMessages.pipe(
     filter((it) => it.data.id === serverId),
     map((it) => it.data.state),
-    tap((it) => {
-      console.log(serverId, it)
-    }),
     map((it) => it === IServerState.LEADER)
   ));
 

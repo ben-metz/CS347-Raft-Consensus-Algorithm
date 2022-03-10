@@ -1,7 +1,20 @@
-import { BehaviorSubject, filter, map, Observable, Subject, switchMap, timestamp } from "rxjs";
-import { IConnectionStatusServerMessage, IConnectionType, IDataUpdate, IDataUpdateOutgoingMessage, IDetailsUpdateServerMessage, IServerMessageType, IServerOutgoingMessageType, IServerStatusValue, ISetServerStatusOutgoingMessage, ServerMessage } from "../customTypes/server";
+import { BehaviorSubject, filter, map, Observable, Subject, switchMap, tap, timestamp } from "rxjs";
+import {
+  IConnectionStatusServerMessage,
+  IConnectionType,
+  IDataUpdate,
+  IDataUpdateOutgoingMessage,
+  IDetailsUpdateServerMessage,
+  IServerMessageType,
+  IServerOutgoingMessageType,
+  IServerState,
+  IServerStatusValue,
+  ISetServerStatusOutgoingMessage,
+  ServerMessage,
+} from "../customTypes/server";
 
-export type IServerStates = Record<number, IServerStatusValue>;
+export type IServerStatus = Record<number, IServerStatusValue>;
+export type IServerStates = Record<number, IServerState>;
 
 class RaftClient {
   wsClient: WebSocket;
@@ -20,6 +33,10 @@ class RaftClient {
 
   latestDetailsUpdateMessages: Observable<IDetailsUpdateServerMessage & { timestamp: number; time: number }>;
 
+  private latestServerStatusSubject: BehaviorSubject<IServerStatus>;
+
+  latestServerStatus: Observable<IServerStatus>;
+
   private latestServerStateSubject: BehaviorSubject<IServerStates>;
 
   latestServerState: Observable<IServerStates>;
@@ -30,12 +47,22 @@ class RaftClient {
   private startTime: Date;
 
   constructor() {
-    this.latestServerStateSubject = new BehaviorSubject<IServerStates>({
+    this.latestServerStatusSubject = new BehaviorSubject<IServerStatus>({
       0: IServerStatusValue.RESTARTED,
       1: IServerStatusValue.RESTARTED,
       2: IServerStatusValue.RESTARTED,
       3: IServerStatusValue.RESTARTED,
       4: IServerStatusValue.RESTARTED,
+    });
+
+    this.latestServerStatus = this.latestServerStatusSubject.asObservable();
+
+    this.latestServerStateSubject = new BehaviorSubject<IServerStates>({
+      0: IServerState.CANDIDATE,
+      1: IServerState.CANDIDATE,
+      2: IServerState.CANDIDATE,
+      3: IServerState.CANDIDATE,
+      4: IServerState.CANDIDATE,
     });
 
     this.latestServerState = this.latestServerStateSubject.asObservable();
@@ -78,7 +105,8 @@ class RaftClient {
             ...value,
             timestamp,
             time: ((timestamp.valueOf() - this.startTime.valueOf()) / 100)
-          })),    
+          })),
+          tap((it) => this.updateLatestServerState(it.data.id, it.data.state))
         )
       }),
     );
@@ -93,19 +121,30 @@ class RaftClient {
     );
   }
 
-  private updateLatestServerState(server_id: number, stopped: IServerStatusValue) {
-    const currentValue = this.latestServerStateSubject.getValue();
+  private updateLatestServerStatus(server_id: number, stopped: IServerStatusValue) {
+    const currentValue = this.latestServerStatusSubject.getValue();
     if (currentValue[server_id] === stopped) {
       return;
     }
-    this.latestServerStateSubject.next({
+    this.latestServerStatusSubject.next({
       ...currentValue,
       [server_id]: stopped,
     });
   }
 
-  getLatestServerStateById(server_id: number): Observable<IServerStatusValue> {
-    return this.latestServerState.pipe(
+  private updateLatestServerState(server_id: number, state: IServerState) {
+    const currentValue = this.latestServerStateSubject.getValue();
+    if (currentValue[server_id] === state) {
+      return;
+    }
+    this.latestServerStateSubject.next({
+      ...currentValue,
+      [server_id]: state,
+    });
+  }
+
+  getLatestServerStatusById(server_id: number): Observable<IServerStatusValue> {
+    return this.latestServerStatus.pipe(
       map((state) => state[server_id])
     )
   }
@@ -114,8 +153,8 @@ class RaftClient {
     this.latestPausedSubject.next(!this.latestPausedSubject.getValue())
   }
   
-  private setServerState(server_id: number, stopped: IServerStatusValue) {
-    this.updateLatestServerState(server_id, stopped);
+  private setServerStatus(server_id: number, stopped: IServerStatusValue) {
+    this.updateLatestServerStatus(server_id, stopped);
     const message: ISetServerStatusOutgoingMessage = {
       message_type: IServerOutgoingMessageType.SET_SERVER_STATUS,
       data: {
@@ -147,11 +186,11 @@ class RaftClient {
   }
 
   startServer(server_id: number) {
-    this.setServerState(server_id, IServerStatusValue.RESTARTED);
+    this.setServerStatus(server_id, IServerStatusValue.RESTARTED);
   }
 
   stopServer(server_id: number) {
-    this.setServerState(server_id, IServerStatusValue.HALTED);
+    this.setServerStatus(server_id, IServerStatusValue.HALTED);
   }
 
   updateData(update: IDataUpdate) {

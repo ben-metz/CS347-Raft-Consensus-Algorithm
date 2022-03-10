@@ -5,6 +5,7 @@ import './App.css';
 import 'ag-grid-community/dist/styles/ag-grid.css';
 import 'ag-grid-community/dist/styles/ag-theme-alpine.css';
 import ServerBlock from './components/ServerBlock';
+import RaftVisualiser from 'components/RaftVisualiser';
 
 const App: FC = () => {
   return (
@@ -17,6 +18,7 @@ const App: FC = () => {
         ))}
       </div>
       <DataInputForm />
+      <RaftVisualiser />
     </div>
   );
 }
