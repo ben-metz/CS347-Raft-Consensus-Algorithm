@@ -6,7 +6,7 @@ import 'ag-grid-community/dist/styles/ag-theme-alpine.css';
 import { IServerState } from 'customTypes/server';
 import { ColDef, GridApi } from 'ag-grid-community';
 import { raftClient } from 'libs/RaftClient';
-import { distinctUntilChanged, filter, map, tap, timestamp } from 'rxjs';
+import { distinctUntilChanged, filter, tap } from 'rxjs';
 import { useCallback } from 'react';
 
 const parseState = (val: IServerState) => {
@@ -23,7 +23,6 @@ const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
   showDuplicated
 }) => {
   const [agGridApi, setAgGridApi] = useState<GridApi>();
-  const [startTime, setStartTime] = useState<Date>(new Date());
   const [columnDefs] = useState<ColDef[]>([
       {
         field: "time",
@@ -65,10 +64,10 @@ const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
   ]);
 
   const resetAll = useCallback(() => {
-    setStartTime(new Date());
     if (!agGridApi) {
       return;
     }
+    agGridApi.flushAsyncTransactions();
     agGridApi.setRowData([]);
   }, [agGridApi])
 
@@ -76,12 +75,6 @@ const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
     if (!agGridApi) return;
     const subscription = raftClient.latestDetailsUpdateMessages.pipe(
       filter((it) => it.data.id === serverId),
-      timestamp(),
-      map(({ timestamp, value }) => ({
-        ...value,
-        timestamp,
-        time: ((timestamp.valueOf() - startTime.valueOf()) / 100)
-      })),
       !showDuplicated ?
           distinctUntilChanged((prev, next) => {
             if (showDuplicated) {
@@ -96,7 +89,7 @@ const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
               && prev.data.database === next.data.database
           }) : tap(),
     ).subscribe((update) => {
-      agGridApi.applyTransaction({
+      agGridApi.applyTransactionAsync({
         add: [update]
       })
     });
@@ -107,7 +100,7 @@ const ServerGrid: FC<{ serverId: number; showDuplicated: boolean }> = ({
       subscription.unsubscribe();
       resetSubscription.unsubscribe();
     }
-  }, [agGridApi, serverId, showDuplicated, startTime, resetAll]);
+  }, [agGridApi, serverId, showDuplicated, resetAll]);
 
   return (
       <div className="ag-theme-alpine" style={{height: 360, width: '100%'}}>

@@ -1,4 +1,5 @@
 import ConnectionStatus from 'components/ConnectionStatus';
+import DataInputForm from 'components/DataInputForm';
 import React, { FC } from 'react';
 import './App.css';
 import ServerBlock from './components/ServerBlock';
@@ -13,6 +14,7 @@ const App: FC = () => {
           <ServerBlock serverId={i} key={i} />
         ))}
       </div>
+      <DataInputForm />
     </div>
   );
 }

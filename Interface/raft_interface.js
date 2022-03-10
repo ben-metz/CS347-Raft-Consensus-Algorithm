@@ -88,14 +88,15 @@ wss.on('connection', function connection(ws) {
     if (validationResult.error) {
       return;
     }
-    if (dataJson.message_type === 'restart') {
+    const { value } = validationResult;
+    if (value.message_type === 'restart') {
       console.log("Restarting Raft Servers...")
       proc.kill();
 
       proc = spawn("../Raft_Implementation/manager");
       return;
     }
-    sendServer.send(dataString, client_send_port, client_ip);
+    sendServer.send(JSON.stringify(value), client_send_port, client_ip);
   });
 });
 

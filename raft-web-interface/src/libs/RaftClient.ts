@@ -1,4 +1,4 @@
-import { BehaviorSubject, filter, map, Observable, Subject, switchMap } from "rxjs";
+import { BehaviorSubject, filter, map, Observable, Subject, switchMap, timestamp } from "rxjs";
 import { IConnectionStatusServerMessage, IConnectionType, IDataUpdate, IDataUpdateOutgoingMessage, IDetailsUpdateServerMessage, IServerMessageType, IServerOutgoingMessageType, IServerStatusValue, ISetServerStatusOutgoingMessage, ServerMessage } from "../customTypes/server";
 
 export type IServerStates = Record<number, IServerStatusValue>;
@@ -27,8 +27,10 @@ class RaftClient {
   private isConnectionStatusMessage(it: ServerMessage): it is IConnectionStatusServerMessage {
     return it.message_type === IServerMessageType.CONNECTION_STATUS
   }
+  private startTime: Date;
 
   constructor() {
+    this.startTime = new Date();
     // TODO: Add mechanism to detect initial state of server
     this.latestServerStateSubject = new BehaviorSubject<IServerStates>({
       0: IServerStatusValue.RESTARTED,
@@ -70,6 +72,12 @@ class RaftClient {
         return this.latestPaused.pipe(
           filter((paused) => !paused),
           map(() => it),
+          timestamp(),
+          map(({ timestamp, value }) => ({
+            ...value,
+            timestamp,
+            time: ((timestamp.valueOf() - this.startTime.valueOf()) / 100)
+          })),    
         )
       }),
     );
@@ -121,7 +129,14 @@ class RaftClient {
     const message = {
       message_type: IServerOutgoingMessageType.RESTART,
     }
-    this.wsClient.send(JSON.stringify(message))
+    if (this.wsClient.readyState !== this.wsClient.CLOSED) {
+      this.wsClient.send(JSON.stringify(message))      
+    } else {
+      this.wsClient = new WebSocket(
+        process.env.REACT_APP_WEBSOCKET_URL ?? 'ws://localhost:8001/'
+      );
+    }
+    this.startTime = new Date();
     this.latestShouldResetSubject.next();
   }
 
