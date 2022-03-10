@@ -29,15 +29,33 @@ https://raft.github.io/raft.pdf
 
 **Flotsam: Evaluating Implementations of the Raft Consensus Algorithm** https://connorgilbert.com/papers/flotsam.pdf \[ This work presents a system, Flotsam, for empirically testing Raft open-source implementations for errors. Randomized test cases are generated and tested in a virtualized environment based on Docker. Test operations are specified using a general interface to allow new implementations to be simply “plugged in”, and outputs are checked against each other using configurable criteria after injecting. \]
 
-## Running instructions (Linux is easiest because g++)
+## Running Instructions - Node.js + React
+### Prerequisites
+- Node.js v16.14.0 (Might work on earlier versions of Node.js) with corepack enabled
+- g++ with support for C++11
+- Linux, native or on WSL2 (Mac OS X uses a different Clang implementation)
+
+### Steps
+1. Navigate to the `Interface` directory.
+2. Run `yarn` to install all dependencies of the project, then run `yarn start` to start the Node.js server.
+3. In another terminal, navigate to the `raft-web-interface` directory, then perform the same commands as Step 2.
+4. Your browser should open `http://localhost:3000` automatically.
+5. (For WSL2 users)
+   1. Install `net-tools` if it is not present. Then, get the host IP of the WSL2 subsystem with `ifconfig`.
+   2. Add a file called `.env` inside the `raft-web-interface` folder with the following content: ```REACT_APP_WEBSOCKET_URL=ws://<IP from ifconfig>:8001```
+   3. Restart the `raft-web-interface` server
+
+## Running Instructions - Python
 
 ### Prerequisites
 - Python 3.9 or later
 - g++ with support for C++11
 - Linux, native or on WSL2 (Mac OS X uses a different Clang implementation)
-- For WSL2 users: Xming
+- For WSL2 Python users: Xming
 
-### Running Instructions
+Note: It is easiest to get the project up and running with a Linux machine.
+
+### Steps
 1. Navigate to the `Interface` directory.
 2. For WSL2 users: Start XLaunch with `Multiple windows` support > `Start no client` > Check the `No Access Control` option.
 3. Run ```python3 raft_interface.py```.
