@@ -30,9 +30,6 @@ const ServerIsLeader: FC<{ serverId: number }> = ({ serverId }) => {
   const [isLeader] = useObservableState(() => raftClient.latestDetailsUpdateMessages.pipe(
     filter((it) => it.data.id === serverId),
     map((it) => it.data.state),
-    tap((it) => {
-      console.log(serverId, it)
-    }),
     map((it) => it === IServerState.LEADER)
   ));
 

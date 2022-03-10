@@ -26,18 +26,18 @@ export interface IServerConnectionButtonProps {
 const ServerConnectionButton: FC<IServerConnectionButtonProps> = ({
   serverId,
 }) => {
-  const [serverState] = useObservableState(() => raftClient.getLatestServerStateById(serverId));
+  const [serverStatus] = useObservableState(() => raftClient.getLatestServerStatusById(serverId));
   const onClick = useCallback(() => {
-    if (serverState === IServerStatusValue.HALTED) {
+    if (serverStatus === IServerStatusValue.HALTED) {
       raftClient.startServer(serverId);
     } else {
       raftClient.stopServer(serverId);
     }
-  }, [serverState, serverId]);
+  }, [serverStatus, serverId]);
 
   return (
-    <Button onClick={onClick} className={getButtonClass(serverState)}>
-      {getMessage(serverState)}
+    <Button onClick={onClick} className={getButtonClass(serverStatus)}>
+      {getMessage(serverStatus)}
     </Button>
   );
 }
