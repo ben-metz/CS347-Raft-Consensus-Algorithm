@@ -31,7 +31,7 @@ const followerStyle: CSSProperties = {
 
 const leaderStyle: CSSProperties = {
   ...defaultStyle,
-  background: '#e39e71',
+  background: '#ffd5ba',
 }
 
 const getStateLabel = (state: IServerState): string => {
