@@ -46,8 +46,8 @@ const ConnectionStatusText: FC = () => {
 
 const ConnectionStatus: FC = () => {
   return (
-    <div className="mt-2 sticky top-0 bg-white dark:bg-black py-4 z-50">
-      <div className="mb-4">
+    <div className="mt-1 sticky top-0 bg-white dark:bg-black py-2 z-50 flex-row flex items-center justify-center">
+      <div className="mr-6">
         <p className="text-center font-bold text-xl">Connection Status: <ConnectionStatusText /></p>
         <CurrentLeader />
       </div>
