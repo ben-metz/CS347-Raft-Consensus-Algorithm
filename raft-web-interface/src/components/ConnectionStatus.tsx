@@ -1,6 +1,5 @@
 import { IConnectionType } from "customTypes/server";
 import useLeaderServerId from "hooks/useLeaderServerId";
-import usePaused from "hooks/usePaused";
 import { raftClient } from "libs/RaftClient";
 import { useObservableState } from "observable-hooks";
 import { FC, useMemo } from "react";

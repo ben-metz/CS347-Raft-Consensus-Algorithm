@@ -4,7 +4,7 @@ import { IServerStatusValue } from "../customTypes/server";
 import { useObservableState } from "observable-hooks";
 import { raftClient } from "libs/RaftClient";
 import { useCallback } from "react";
-import usePaused from "hooks/usePaused";
+import useDisableCommands from "hooks/useDisableCommands";
 
 const getMessage = (status?: IServerStatusValue) => {
   switch (status) {
@@ -28,7 +28,7 @@ const ServerConnectionButton: FC<IServerConnectionButtonProps> = ({
   serverId,
 }) => {
   const [serverStatus] = useObservableState(() => raftClient.getLatestServerStatusById(serverId));
-  const paused = usePaused();
+  const disabled = useDisableCommands();
   const onClick = useCallback(() => {
     if (serverStatus === IServerStatusValue.HALTED) {
       raftClient.startServer(serverId);
@@ -38,7 +38,7 @@ const ServerConnectionButton: FC<IServerConnectionButtonProps> = ({
   }, [serverStatus, serverId]);
 
   return (
-    <Button onClick={onClick} className={getButtonClass(serverStatus)} disabled={paused}>
+    <Button onClick={onClick} className={getButtonClass(serverStatus)} disabled={disabled}>
       {getMessage(serverStatus)}
     </Button>
   );
