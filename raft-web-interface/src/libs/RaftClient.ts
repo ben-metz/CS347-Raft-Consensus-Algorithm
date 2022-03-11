@@ -200,6 +200,10 @@ class RaftClient {
     }
     this.startTime = new Date();
     if (this.wsClient.readyState !== this.wsClient.CLOSED) {
+      this.latestMessagesSubject.next({
+        message_type: IServerMessageType.CONNECTION_STATUS,
+        data: IConnectionType.ENDED,
+      })
       this.wsClient.send(JSON.stringify(message));
     } else {
       this.connect();
