@@ -4,7 +4,6 @@ import usePaused from "hooks/usePaused";
 import { raftClient } from "libs/RaftClient";
 import { useObservableState } from "observable-hooks";
 import { FC, useMemo } from "react";
-import { distinctUntilChanged } from "rxjs";
 import ConnectionButton from "./ConnectionButton";
 
 const getStatusMessage = (connected: boolean) => {
@@ -34,10 +33,9 @@ const CurrentLeader: FC = () => {
 }
 
 const ConnectionStatusText: FC = () => {
-  const [status] = useObservableState(() => raftClient.latestConnectionStatus.pipe(distinctUntilChanged()));
-  const paused = usePaused();
+  const [status] = useObservableState(() => raftClient.latestConnectionStatus);
 
-  const connected = useMemo(() => status === IConnectionType.STARTED && !paused, [status, paused]);
+  const connected = useMemo(() => status === IConnectionType.STARTED, [status]);
 
   return (
     <span className={getStatusClass(connected)}>{getStatusMessage(connected)}</span>

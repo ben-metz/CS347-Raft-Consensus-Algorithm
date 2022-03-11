@@ -17,6 +17,7 @@ export type IServerStatus = Record<number, IServerStatusValue>;
 export type IServerStates = Record<number, IServerState>;
 
 class RaftClient {
+  // @ts-ignore
   wsClient: WebSocket;
 
   private latestMessagesSubject: Subject<ServerMessage>;
@@ -44,6 +45,8 @@ class RaftClient {
   private isConnectionStatusMessage(it: ServerMessage): it is IConnectionStatusServerMessage {
     return it.message_type === IServerMessageType.CONNECTION_STATUS
   }
+
+  // @ts-ignore
   private startTime: Date;
 
   static initialServerStatus: IServerStatus = {
@@ -79,23 +82,7 @@ class RaftClient {
 
     this.latestPaused = this.latestPausedSubject.asObservable();
 
-    this.wsClient = new WebSocket(
-      process.env.REACT_APP_WEBSOCKET_URL ?? 'ws://localhost:8001/'
-    );
-
-    this.startTime = new Date();
-    this.wsClient.onopen = () => {
-      this.startTime = new Date();
-      console.log('ws opened');
-    };
-    this.wsClient.onclose = () => console.log('ws closed');
     this.latestMessagesSubject = new Subject<ServerMessage>();
-
-    this.wsClient.onmessage = (msg) => {
-      const parsed = JSON.parse(msg.data) as ServerMessage;
-      this.latestMessagesSubject.next(parsed);
-    }
-
     this.latestDetailsUpdateMessages = this.latestMessagesSubject.pipe(
       filter((it): it is IDetailsUpdateServerMessage => {
         return it.message_type === IServerMessageType.DETAILS_UPDATE
@@ -130,6 +117,37 @@ class RaftClient {
         return IConnectionType.STARTED;
       })
     );
+
+    this.connect();
+  }
+
+  private connect() {
+    this.wsClient = new WebSocket(
+      process.env.REACT_APP_WEBSOCKET_URL ?? 'ws://localhost:8001/'
+    );
+
+    this.startTime = new Date();
+    this.wsClient.onopen = () => {
+      this.startTime = new Date();
+      this.latestMessagesSubject.next({
+        message_type: IServerMessageType.CONNECTION_STATUS,
+        data: IConnectionType.STARTED,
+      })
+      console.log('ws opened');
+    };
+    this.wsClient.onclose = () => {
+      console.log('ws closed');
+      // emulate connection ended
+      this.latestMessagesSubject.next({
+        message_type: IServerMessageType.CONNECTION_STATUS,
+        data: IConnectionType.ENDED,
+      })
+    };
+    
+    this.wsClient.onmessage = (msg) => {
+      const parsed = JSON.parse(msg.data) as ServerMessage;
+      this.latestMessagesSubject.next(parsed);
+    }    
   }
 
   private updateLatestServerStatus(server_id: number, stopped: IServerStatusValue) {
@@ -180,18 +198,11 @@ class RaftClient {
     const message = {
       message_type: IServerOutgoingMessageType.RESTART,
     }
+    this.startTime = new Date();
     if (this.wsClient.readyState !== this.wsClient.CLOSED) {
       this.wsClient.send(JSON.stringify(message));
-      this.startTime = new Date();
     } else {
-      this.wsClient = new WebSocket(
-        process.env.REACT_APP_WEBSOCKET_URL ?? 'ws://localhost:8001/'
-      );
-      this.wsClient.onopen = () => {
-        this.startTime = new Date();
-        console.log('ws opened');
-      };
-      this.wsClient.onclose = () => console.log('ws closed');  
+      this.connect();
     }
     this.latestShouldResetSubject.next();
     // Reconnect if Raft is restarted
