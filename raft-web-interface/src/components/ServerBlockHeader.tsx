@@ -18,7 +18,6 @@ const ServerCurrentTimeNumber: FC<{ serverId: number }> = ({ serverId }) => {
   const [currentTime] = useObservableState(() => raftClient.latestDetailsUpdateMessages.pipe(
     filter((it) => it.data.id === serverId),
     map((it) => it.time),
-    distinctUntilChanged()
   ))
 
   return (
