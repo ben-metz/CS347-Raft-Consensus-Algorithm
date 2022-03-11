@@ -14,7 +14,7 @@ interface IServerBlockHeaderProps {
   onGridClear: () => void;
 }
 
-const ServerCurrentTime: FC<{ serverId: number }> = ({ serverId }) => {
+const ServerCurrentTimeNumber: FC<{ serverId: number }> = ({ serverId }) => {
   const [currentTime] = useObservableState(() => raftClient.latestDetailsUpdateMessages.pipe(
     filter((it) => it.data.id === serverId),
     map((it) => it.time),
@@ -22,7 +22,13 @@ const ServerCurrentTime: FC<{ serverId: number }> = ({ serverId }) => {
   ))
 
   return (
-    <p className="text-xl text-center mb-2">(Current Time: {currentTime?.toFixed(2)} ms)</p>
+    <span>{currentTime?.toFixed(2)}</span>
+  )
+}
+
+const ServerCurrentTime: FC<{ serverId: number }> = ({ serverId }) => {
+  return (
+    <p className="text-xl text-center mb-2">(Current Time: <ServerCurrentTimeNumber serverId={serverId} /> ms)</p>
   )
 }
 
