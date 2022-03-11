@@ -57,7 +57,7 @@ const ServerBlockHeader: FC<IServerBlockHeaderProps> = ({
 }) => {
   return (
     <>
-      <h2 className='text-center font-bold text-2xl'>Server {serverId + 1} <ServerIsLeader serverId={serverId} /></h2>
+      <h2 className='text-center font-bold text-2xl'>Server {serverId} <ServerIsLeader serverId={serverId} /></h2>
       <ServerCurrentTime serverId={serverId} />
       <div className="mb-2 flex justify-between">
         <DuplicatedMessagesButton serverId={serverId} showDuplicated={showDuplicated} onClick={toggleShowDuplicated} />

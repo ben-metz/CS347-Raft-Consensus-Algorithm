@@ -24,7 +24,7 @@ const getStatusClass = (connected: boolean) => {
 const CurrentLeaderText: FC = () => {
   const leaderServerId = useLeaderServerId();
 
-  return <span>{leaderServerId !== null ? `Server ${leaderServerId + 1}` : 'None'}</span>
+  return <span>{leaderServerId !== null ? `Server ${leaderServerId}` : 'None'}</span>
 }
 
 const CurrentLeader: FC = () => {

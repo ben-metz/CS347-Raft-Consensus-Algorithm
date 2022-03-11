@@ -58,7 +58,7 @@ const ServerLabel: FC<{ serverId: number; state: IServerState }> = ({
   state,
 }) => (
   <div>
-    <p className="font-bold">Server {serverId + 1}</p>
+    <p className="font-bold">Server {serverId}</p>
     <p>({getStateLabel(state)})</p>
   </div>
 )
