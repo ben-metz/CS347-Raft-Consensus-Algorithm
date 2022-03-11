@@ -1,4 +1,4 @@
-import { BehaviorSubject, filter, map, Observable, Subject, switchMap, tap, timestamp } from "rxjs";
+import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, Subject, switchMap, tap, timestamp } from "rxjs";
 import {
   IConnectionStatusServerMessage,
   IConnectionType,
@@ -46,14 +46,18 @@ class RaftClient {
   }
   private startTime: Date;
 
+  static initialServerStatus: IServerStatus = {
+    0: IServerStatusValue.HALTED,
+    1: IServerStatusValue.HALTED,
+    2: IServerStatusValue.HALTED,
+    3: IServerStatusValue.HALTED,
+    4: IServerStatusValue.HALTED,
+  };
+
   constructor() {
-    this.latestServerStatusSubject = new BehaviorSubject<IServerStatus>({
-      0: IServerStatusValue.RESTARTED,
-      1: IServerStatusValue.RESTARTED,
-      2: IServerStatusValue.RESTARTED,
-      3: IServerStatusValue.RESTARTED,
-      4: IServerStatusValue.RESTARTED,
-    });
+    this.latestServerStatusSubject = new BehaviorSubject<IServerStatus>(
+      RaftClient.initialServerStatus
+    );
 
     this.latestServerStatus = this.latestServerStatusSubject.asObservable();
 
@@ -99,6 +103,13 @@ class RaftClient {
       switchMap((it) => {
         return this.latestPaused.pipe(
           filter((paused) => !paused),
+          tap(() => {
+            if (it.data.action === 'Status Change: Halted') {
+              this.updateLatestServerStatus(it.data.id, IServerStatusValue.HALTED);
+            } else {
+              this.updateLatestServerStatus(it.data.id, IServerStatusValue.RESTARTED);
+            }
+          }),
           map(() => it),
           timestamp(),
           map(({ timestamp, value }) => ({
@@ -145,7 +156,8 @@ class RaftClient {
 
   getLatestServerStatusById(server_id: number): Observable<IServerStatusValue> {
     return this.latestServerStatus.pipe(
-      map((state) => state[server_id])
+      map((state) => state[server_id]),
+      distinctUntilChanged()
     )
   }
 
@@ -154,7 +166,6 @@ class RaftClient {
   }
   
   private setServerStatus(server_id: number, stopped: IServerStatusValue) {
-    this.updateLatestServerStatus(server_id, stopped);
     const message: ISetServerStatusOutgoingMessage = {
       message_type: IServerOutgoingMessageType.SET_SERVER_STATUS,
       data: {
@@ -183,6 +194,10 @@ class RaftClient {
       this.wsClient.onclose = () => console.log('ws closed');  
     }
     this.latestShouldResetSubject.next();
+    // Reconnect if Raft is restarted
+    this.latestPausedSubject.next(false);
+    // Reset server status
+    this.latestServerStatusSubject.next(RaftClient.initialServerStatus);
   }
 
   startServer(server_id: number) {

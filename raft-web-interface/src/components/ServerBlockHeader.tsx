@@ -2,7 +2,7 @@ import { IServerState } from "customTypes/server";
 import { raftClient } from "libs/RaftClient";
 import { useObservableState } from "observable-hooks";
 import { FC } from "react";
-import { distinct, filter, map } from "rxjs";
+import { distinctUntilChanged, filter, map } from "rxjs";
 import DuplicatedMessagesButton from "./DuplicatedMessagesButton";
 import GridClearButton from "./GridClearButton";
 import ServerConnectionButton from "./ServerStatusButton";
@@ -14,15 +14,21 @@ interface IServerBlockHeaderProps {
   onGridClear: () => void;
 }
 
-const ServerCurrentTime: FC<{ serverId: number }> = ({ serverId }) => {
+const ServerCurrentTimeNumber: FC<{ serverId: number }> = ({ serverId }) => {
   const [currentTime] = useObservableState(() => raftClient.latestDetailsUpdateMessages.pipe(
     filter((it) => it.data.id === serverId),
     map((it) => it.time),
-    distinct()
+    distinctUntilChanged()
   ))
 
   return (
-    <p className="text-xl text-center mb-2">(Current Time: {currentTime?.toFixed(2)} ms)</p>
+    <span>{currentTime?.toFixed(2)}</span>
+  )
+}
+
+const ServerCurrentTime: FC<{ serverId: number }> = ({ serverId }) => {
+  return (
+    <p className="text-xl text-center mb-2">(Current Time: <ServerCurrentTimeNumber serverId={serverId} /> ms)</p>
   )
 }
 
@@ -30,7 +36,8 @@ const ServerIsLeader: FC<{ serverId: number }> = ({ serverId }) => {
   const [isLeader] = useObservableState(() => raftClient.latestDetailsUpdateMessages.pipe(
     filter((it) => it.data.id === serverId),
     map((it) => it.data.state),
-    map((it) => it === IServerState.LEADER)
+    map((it) => it === IServerState.LEADER),
+    distinctUntilChanged(),
   ));
 
   if (!isLeader) {
@@ -50,7 +57,7 @@ const ServerBlockHeader: FC<IServerBlockHeaderProps> = ({
 }) => {
   return (
     <>
-      <h2 className='text-center font-bold text-2xl'>Server {serverId + 1} <ServerIsLeader serverId={serverId} /></h2>
+      <h2 className='text-center font-bold text-2xl'>Server {serverId} <ServerIsLeader serverId={serverId} /></h2>
       <ServerCurrentTime serverId={serverId} />
       <div className="mb-2 flex justify-between">
         <DuplicatedMessagesButton serverId={serverId} showDuplicated={showDuplicated} onClick={toggleShowDuplicated} />

@@ -1,39 +1,54 @@
 import { IConnectionType } from "customTypes/server";
 import useLeaderServerId from "hooks/useLeaderServerId";
+import usePaused from "hooks/usePaused";
 import { raftClient } from "libs/RaftClient";
 import { useObservableState } from "observable-hooks";
-import { FC } from "react";
+import { FC, useMemo } from "react";
+import { distinctUntilChanged } from "rxjs";
 import ConnectionButton from "./ConnectionButton";
 
-const getStatusMessage = (status?: IConnectionType) => {
-  if (status === IConnectionType.STARTED) {
+const getStatusMessage = (connected: boolean) => {
+  if (connected) {
     return "Connected";
   }
   return "Disconnected";
 }
 
-const getStatusClass = (status?: IConnectionType) => {
-  if (status === IConnectionType.STARTED) {
+const getStatusClass = (connected: boolean) => {
+  if (connected) {
     return "text-green-500";
   }
   return "text-red-500";
 }
 
-const CurrentLeader: FC = () => {
+const CurrentLeaderText: FC = () => {
   const leaderServerId = useLeaderServerId();
 
+  return <span>{leaderServerId !== null ? `Server ${leaderServerId}` : 'None'}</span>
+}
+
+const CurrentLeader: FC = () => {
   return (
-    <p className="text-center font-bold text-xl">Current Leader 👑: {leaderServerId !== null ? `Server ${leaderServerId + 1}` : 'None'}</p>
+    <p className="text-center font-bold text-xl">Current Leader 👑: <CurrentLeaderText /></p>
   );
 }
 
-const ConnectionStatus: FC = () => {
-  const [status] = useObservableState(() => raftClient.latestConnectionStatus);
+const ConnectionStatusText: FC = () => {
+  const [status] = useObservableState(() => raftClient.latestConnectionStatus.pipe(distinctUntilChanged()));
+  const paused = usePaused();
 
+  const connected = useMemo(() => status === IConnectionType.STARTED && !paused, [status, paused]);
+
+  return (
+    <span className={getStatusClass(connected)}>{getStatusMessage(connected)}</span>
+  )
+}
+
+const ConnectionStatus: FC = () => {
   return (
     <div className="mt-2 sticky top-0 bg-white dark:bg-black py-4 z-50">
       <div className="mb-4">
-        <p className="text-center font-bold text-xl">Connection Status: <span className={getStatusClass(status)}>{getStatusMessage(status)}</span></p>
+        <p className="text-center font-bold text-xl">Connection Status: <ConnectionStatusText /></p>
         <CurrentLeader />
       </div>
       <div className="text-center">
