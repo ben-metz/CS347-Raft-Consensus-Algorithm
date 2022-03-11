@@ -1,5 +1,6 @@
 import { IServerState, IServerStatusValue } from 'customTypes/server';
 import useLeaderServerId from 'hooks/useLeaderServerId';
+import usePaused from 'hooks/usePaused';
 import { raftClient } from 'libs/RaftClient';
 import { useObservableState } from 'observable-hooks';
 import React from 'react';
@@ -138,8 +139,7 @@ const useVisualizationElements = () => {
   const leaderServerId = useLeaderServerId();
   const [serverStates] = useObservableState(() => raftClient.latestServerState);
   const [serverStatus] = useObservableState(() => raftClient.latestServerStatus);
-  let paused = useObservableState(raftClient.latestPaused);
-  paused = paused ?? false;
+  const paused = usePaused();
 
   useEffect(() => {
     if (leaderServerId === null || !serverStates || !serverStatus) {
@@ -149,7 +149,7 @@ const useVisualizationElements = () => {
     for (let i = 0; i < NUM_SERVERS; i++) {
       elems.push({
         ...initialElements[i],
-        style: getStyle(serverStates[i], serverStatus[i]),
+        style: getStyle(serverStates[i], paused ? IServerStatusValue.HALTED : serverStatus[i]),
         type: 'input',
         data: {
           label: <ServerLabel serverId={i} state={serverStates[i]} />
