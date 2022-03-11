@@ -2,6 +2,7 @@
 #include "manager.h"
 #include "database.h"
 #include "raft.h"
+#include <iostream>
 
 using json = nlohmann::json;
 
@@ -67,6 +68,8 @@ void Server::initialise(int id, Manager *manager,
 
     this -> stopped = 0;
 
+    this->delayMs = 1;
+
     this->initSocket(port);
 
     this->thread = std::thread(&Server::server_function, this);
@@ -110,8 +113,8 @@ void Server::server_function()
             this->raft->run();
         }
 
-        // Reduce active waiting load by sleeping for 1ms
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        // Reduce active waiting load by sleeping, default sleep time is 1ms
+        std::this_thread::sleep_for(std::chrono::milliseconds(this->delayMs));
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -121,12 +124,15 @@ void Server::server_function()
 void Server::handleMessage(char *msg)
 {
     json deserialised_json = json::parse(std::string(msg));
-
     if (deserialised_json["message_type"] == "set_server_status")
     {
         this->set_status(deserialised_json["data"]["stopped"].get<int>());
 
         this->raft->resetElectionTimer();
+    }
+    else if (deserialised_json["message_type"] == "set_timeout")
+    {
+        this->set_timeout(deserialised_json["data"]["timeout"].get<int>());
     }
     else if (this->stopped == 0)
     {
@@ -142,6 +148,11 @@ void Server::set_status(int new_status){
     } else {
         this->send_details("Status Change: Halted");
     }
+}
+
+void Server::set_timeout(int new_timeout) {
+    this->delayMs = new_timeout;
+    std::cout << "Timeout set to be " << new_timeout << " ms." << std::endl;
 }
 
 // Function to send details to python client

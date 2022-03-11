@@ -15,6 +15,7 @@ export enum IServerOutgoingMessageType {
   SET_SERVER_STATUS = 'set_server_status',
   DATA_UPDATE = 'data_update',
   RESTART = 'restart',
+  SET_TIMEOUT = 'set_timeout',
 }
 
 export enum IConnectionType {
@@ -113,6 +114,15 @@ export interface IDataUpdate {
 export interface IDataUpdateOutgoingMessage {
   message_type: IServerOutgoingMessageType.DATA_UPDATE;
   data: IDataUpdate;
+}
+
+export interface ISetTimeout {
+  timeout: number;
+}
+
+export interface ISetTimeoutOutgoingMessage {
+  message_type: IServerOutgoingMessageType.SET_TIMEOUT;
+  data: ISetTimeout;
 }
 
 export type ServerMessage = IAppendEntriesFailServerMessage

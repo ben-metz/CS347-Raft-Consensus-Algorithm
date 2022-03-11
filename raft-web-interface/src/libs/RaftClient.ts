@@ -176,6 +176,16 @@ class RaftClient {
     this.wsClient.send(JSON.stringify(message))
   }
 
+  setServerTimeout(timeout: number) {
+    const message = {
+      message_type: IServerOutgoingMessageType.SET_TIMEOUT,
+      data: {
+        timeout,
+      }
+    };
+    this.wsClient.send(JSON.stringify(message));
+  }
+
   restartRaft() {
     const message = {
       message_type: IServerOutgoingMessageType.RESTART,

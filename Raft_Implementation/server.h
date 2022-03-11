@@ -47,6 +47,9 @@ private:
 
     int stopped;
     void set_status(int new_status);
+    void set_timeout(int new_timeout);
+
+    int delayMs;
 
     Raft_Node *raft;
     char *raft_response;

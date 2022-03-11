@@ -25,12 +25,20 @@ const dataUpdateJoi = Joi.object({
 
 const restartJoi = Joi.object({
   message_type: Joi.string().equal('restart').required()
+});
+
+const setTimeoutJoi = Joi.object({
+  message_type: Joi.string().equal('set_timeout').required(),
+  data: Joi.object({
+    timeout: Joi.number().min(1).required(),
+  }).required(),
 })
 
 const serverMessageJoi = Joi.alternatives().try(
   setServerStatusJoi,
   dataUpdateJoi,
   restartJoi,
+  setTimeoutJoi,
 )
 
 const { Subject } = rxjs;
@@ -86,6 +94,7 @@ wss.on('connection', function connection(ws) {
     const dataJson = JSON.parse(dataString);
     const validationResult = serverMessageJoi.validate(dataJson);
     if (validationResult.error) {
+      console.warn(validationResult.error);
       return;
     }
     const { value } = validationResult;
@@ -117,6 +126,10 @@ async function main() {
 
   make_proc.stdout.on('data', (data) => {
     console.log(`stdout: ${data}`);
+  });
+
+  make_proc.stderr.on('data', (data) => {
+    console.log(`stderr: ${data}`);
   });
 
   await new Promise((resolve) => make_proc.on('close', resolve));

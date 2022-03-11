@@ -153,6 +153,10 @@ void Manager::handle_message(char *msg, int len)
     {
         this->send_to_server(deserialised_json["data"]["server_id"].get<int>(), msg, len);
     }
+    else if (deserialised_json["message_type"] == "set_timeout")
+    {
+        this->send_to_all_servers(msg, len);
+    }
 }
 
 // Sends a message to the server specified by the id
