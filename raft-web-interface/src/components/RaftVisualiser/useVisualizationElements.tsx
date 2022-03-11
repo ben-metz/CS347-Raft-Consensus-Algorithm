@@ -1,4 +1,4 @@
-import { IServerState } from 'customTypes/server';
+import { IServerState, IServerStatusValue } from 'customTypes/server';
 import useLeaderServerId from 'hooks/useLeaderServerId';
 import { raftClient } from 'libs/RaftClient';
 import { useObservableState } from 'observable-hooks';
@@ -16,8 +16,16 @@ const defaultStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderColor: 'black'
+  borderColor: 'black',
+  borderWidth: 2,
 };
+
+const haltedServerStyle: CSSProperties = {
+  ...defaultStyle,
+  borderColor: 'red',
+  background: '#222222',
+  color: '#666666',
+}
 
 const candidateStyle: CSSProperties = {
   ...defaultStyle,
@@ -112,7 +120,10 @@ const initialElements: Elements = [
 
 const NUM_SERVERS = 5;
 
-const getStyle = (state: IServerState): CSSProperties => {
+const getStyle = (state: IServerState, status: IServerStatusValue): CSSProperties => {
+  if (status === IServerStatusValue.HALTED) {
+    return haltedServerStyle;
+  }
   if (state === IServerState.CANDIDATE) {
     return candidateStyle;
   }
@@ -126,18 +137,19 @@ const useVisualizationElements = () => {
   const [elements, setElements] = useState<Elements>(initialElements);
   const leaderServerId = useLeaderServerId();
   const [serverStates] = useObservableState(() => raftClient.latestServerState);
+  const [serverStatus] = useObservableState(() => raftClient.latestServerStatus);
   let paused = useObservableState(raftClient.latestPaused);
   paused = paused ?? false;
 
   useEffect(() => {
-    if (leaderServerId === null || !serverStates) {
+    if (leaderServerId === null || !serverStates || !serverStatus) {
       return;
     }
     const elems: Elements = [];
     for (let i = 0; i < NUM_SERVERS; i++) {
       elems.push({
         ...initialElements[i],
-        style: getStyle(serverStates[i]),
+        style: getStyle(serverStates[i], serverStatus[i]),
         type: 'input',
         data: {
           label: <ServerLabel serverId={i} state={serverStates[i]} />
@@ -155,7 +167,7 @@ const useVisualizationElements = () => {
       }  
     }
     setElements(elems)
-  }, [leaderServerId, serverStates, paused]);
+  }, [leaderServerId, serverStates, paused, serverStatus]);
 
   return elements;
 }
