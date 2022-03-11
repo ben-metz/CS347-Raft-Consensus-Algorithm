@@ -1,4 +1,4 @@
-import { BehaviorSubject, filter, map, Observable, Subject, switchMap, tap, timestamp } from "rxjs";
+import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, Subject, switchMap, tap, timestamp } from "rxjs";
 import {
   IConnectionStatusServerMessage,
   IConnectionType,
@@ -46,14 +46,18 @@ class RaftClient {
   }
   private startTime: Date;
 
+  static initialServerStatus: IServerStatus = {
+    0: IServerStatusValue.RESTARTED,
+    1: IServerStatusValue.RESTARTED,
+    2: IServerStatusValue.RESTARTED,
+    3: IServerStatusValue.RESTARTED,
+    4: IServerStatusValue.RESTARTED,
+  };
+
   constructor() {
-    this.latestServerStatusSubject = new BehaviorSubject<IServerStatus>({
-      0: IServerStatusValue.RESTARTED,
-      1: IServerStatusValue.RESTARTED,
-      2: IServerStatusValue.RESTARTED,
-      3: IServerStatusValue.RESTARTED,
-      4: IServerStatusValue.RESTARTED,
-    });
+    this.latestServerStatusSubject = new BehaviorSubject<IServerStatus>(
+      RaftClient.initialServerStatus
+    );
 
     this.latestServerStatus = this.latestServerStatusSubject.asObservable();
 
@@ -145,7 +149,8 @@ class RaftClient {
 
   getLatestServerStatusById(server_id: number): Observable<IServerStatusValue> {
     return this.latestServerStatus.pipe(
-      map((state) => state[server_id])
+      map((state) => state[server_id]),
+      distinctUntilChanged()
     )
   }
 
@@ -183,6 +188,10 @@ class RaftClient {
       this.wsClient.onclose = () => console.log('ws closed');  
     }
     this.latestShouldResetSubject.next();
+    // Reconnect if Raft is restarted
+    this.latestPausedSubject.next(false);
+    // Reset server status
+    this.latestServerStatusSubject.next(RaftClient.initialServerStatus);
   }
 
   startServer(server_id: number) {
