@@ -1,4 +1,4 @@
-import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, Subject, switchMap, tap, timestamp } from "rxjs";
+import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, skipWhile, Subject, switchMap, tap, timestamp } from "rxjs";
 import {
   IConnectionStatusServerMessage,
   IConnectionType,
@@ -87,26 +87,21 @@ class RaftClient {
       filter((it): it is IDetailsUpdateServerMessage => {
         return it.message_type === IServerMessageType.DETAILS_UPDATE
       }),
-      switchMap((it) => {
-        return this.latestPaused.pipe(
-          filter((paused) => !paused),
-          tap(() => {
-            if (it.data.action === 'Status Change: Halted') {
-              this.updateLatestServerStatus(it.data.id, IServerStatusValue.HALTED);
-            } else {
-              this.updateLatestServerStatus(it.data.id, IServerStatusValue.RESTARTED);
-            }
-          }),
-          map(() => it),
-          timestamp(),
-          map(({ timestamp, value }) => ({
-            ...value,
-            timestamp,
-            time: ((timestamp.valueOf() - this.startTime.valueOf()) / 100)
-          })),
-          tap((it) => this.updateLatestServerState(it.data.id, it.data.state))
-        )
+      tap((it) => {
+        if (it.data.action === 'Status Change: Halted') {
+          this.updateLatestServerStatus(it.data.id, IServerStatusValue.HALTED);
+        } else {
+          this.updateLatestServerStatus(it.data.id, IServerStatusValue.RESTARTED);
+        }
       }),
+      timestamp(),
+      map(({ timestamp, value }) => ({
+        ...value,
+        timestamp,
+        time: ((timestamp.valueOf() - this.startTime.valueOf()) / 100)
+      })),
+      tap((it) => this.updateLatestServerState(it.data.id, it.data.state)),
+      filter(() => !this.latestPausedSubject.getValue())
     );
 
     this.latestConnectionStatus = this.latestMessagesSubject.pipe(
@@ -233,12 +228,6 @@ class RaftClient {
 
   close() {
     this.wsClient.close();
-  }
-
-  getLatestMessagesByServer(id: number) {
-    return this.latestDetailsUpdateMessages.pipe(
-      filter((it) => it.data.id === id)
-    )
   }
 }
 
