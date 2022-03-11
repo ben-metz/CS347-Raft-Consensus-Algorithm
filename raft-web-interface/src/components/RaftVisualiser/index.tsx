@@ -21,7 +21,7 @@ const RaftVisualiser: FC = () => {
     <>
       <h2 className="text-center font-bold text-xl mb-2">Server Visualisation</h2>
       <div className="flex">
-        <div style={{ height: 500, width: '100%' }}>
+        <div style={{ height: 550, width: '100%' }}>
           <ReactFlow
             elements={elements}
             onLoad={onLoad}

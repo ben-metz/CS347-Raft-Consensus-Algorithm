@@ -1,4 +1,5 @@
 import { IDataUpdate } from "customTypes/server";
+import useDisableCommands from "hooks/useDisableCommands";
 import { raftClient } from "libs/RaftClient";
 import { useCallback } from "react";
 import { FC } from "react";
@@ -6,6 +7,7 @@ import { useForm } from "react-hook-form";
 
 const DataInputForm: FC = () => {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<IDataUpdate>();
+  const disabled = useDisableCommands();
 
   const dataUpdateSubmit = useCallback((values: IDataUpdate) => {
     raftClient.updateData(values);
@@ -94,7 +96,7 @@ const DataInputForm: FC = () => {
             </p>
           )}
         </div>
-        <button type="submit" className="inline-block bg-green-700 text-white font-bold rounded shadow py-2 px-5 text-sm">
+        <button disabled={disabled} type="submit" className="inline-block bg-green-700 text-white font-bold rounded shadow py-2 px-5 text-sm disabled:bg-slate-300">
           Update Data
         </button>
       </form>  
