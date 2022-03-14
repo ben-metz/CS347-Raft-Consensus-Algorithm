@@ -4,3 +4,4 @@
 .gitignore
 manager
 .env
+**node_modules
