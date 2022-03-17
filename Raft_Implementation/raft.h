@@ -82,4 +82,7 @@ public:
     int getCommitIndex();
 
     void resetElectionTimer();
+    void setTimeout(int time);
+
+    void setTerm(int term);
 };

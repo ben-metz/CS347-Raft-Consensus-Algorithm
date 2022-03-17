@@ -93,6 +93,23 @@ void Raft_Node::resetElectionTimer(){
     this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
+void Raft_Node::setTimeout(int time){
+    // Set election timer
+    if (this->state != LEADER){
+        this->election_timeout = time;
+    } else {
+        this->heartbeat_timeout = time;
+    }
+
+    // Reset time of last interaction if timeout reached
+    this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
+void Raft_Node::setTerm(int term){
+    // Set election timer
+    this->term = term;
+}
+
 // When a server receives a message, it is fed into this function where
 // it is deserialised and the appropriate action is taken
 void Raft_Node::input_message(char *msg)

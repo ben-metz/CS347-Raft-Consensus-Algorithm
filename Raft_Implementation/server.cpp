@@ -128,6 +128,20 @@ void Server::handleMessage(char *msg)
 
         this->raft->resetElectionTimer();
     }
+    else if (deserialised_json["message_type"] == "state_injection")
+    {
+        if (deserialised_json["data"]["new_state"] == "Leader"){
+            this->raft->setState(LEADER); 
+        } else if (deserialised_json["data"]["new_state"] == "Candidate"){
+            this->raft->setState(CANDIDATE); 
+        } else if (deserialised_json["data"]["new_state"] == "Follower"){
+            this->raft->setState(FOLLOWER); 
+        }
+
+        this->raft->setTimeout(deserialised_json["data"]["election_timeout"].get<int>());
+
+        this->raft->setTerm(deserialised_json["data"]["term"].get<int>());
+    }
     else if (this->stopped == 0)
     {
         this->raft->input_message(msg);

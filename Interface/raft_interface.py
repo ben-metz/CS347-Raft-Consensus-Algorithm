@@ -2,6 +2,7 @@
 
 from tkinter import *
 from interface import Interface
+from state_injector import Injector
 
 import tkinter.font as tkFont
 import socket
@@ -77,6 +78,10 @@ def restart_raft():
     proc = subprocess.Popen(["../Raft_Implementation/manager"])
 
     #clear_interfaces()
+
+def send_all_tests():
+    for i in range(0, len(injectors)):
+        injectors[i].send_test()
 
 # Takes incoming packets, splits up and places in correct text box
 def handle_packets(client_receive_socket):
@@ -168,7 +173,7 @@ if __name__ == '__main__':
 
     atexit.register(exit_handler)
 
-    mode = 0
+    mode = 1
 
     # IP of ESP and port used
     client_ip = '127.0.0.1'
@@ -258,42 +263,52 @@ if __name__ == '__main__':
     server_label.grid(row=1, column=0)
 
     server = Entry(input_frame, borderwidth=0)
-    server.grid(row=2, column=0)
+    server.grid(row=2, column=0, padx=10)
 
     index_label = Label(input_frame, text='Index', font=fontStyle)
     index_label.configure(foreground=textCol, background=bgCol)
-    index_label.grid(row=1, column=2)
+    index_label.grid(row=1, column=1)
 
     index = Entry(input_frame, borderwidth=0)
-    index.grid(row=2, column=2)
+    index.grid(row=2, column=1, padx=10)
 
     value_label = Label(input_frame, text='Value', font=fontStyle)
     value_label.configure(foreground=textCol, background=bgCol)
-    value_label.grid(row=3, column=0)
+    value_label.grid(row=1, column=2)
 
     value = Entry(input_frame, borderwidth=0)
-    value.grid(row=4, column=0)
+    value.grid(row=2, column=2, padx=10)
 
-    button_sep = Frame(input_frame, width=40, height=10,
-                       background=bgCol)
-    button_sep.grid(row=0, column=1)
-
-    b = Button(input_frame, text='Send', command=send_command,
+    send = Button(input_frame, text='Send', command=send_command,
                borderwidth=0, highlightthickness=0)
-    b.grid(row=4, column=2)
+    send.grid(row=2, column=3)
 
     interface_frames = []
+    testing_frames = []
 
     for i in range(0, 3):
         new_frame = Frame(details_frame, bg=bgCol)
         interface_frames.append(new_frame)
         new_frame.pack(expand=1)
 
+        new_test_frame = Frame(testing_frame, bg=bgCol)
+        testing_frames.append(new_test_frame)
+        new_test_frame.pack(expand=1)
+
     interfaces = []
+    injectors = []
+
+    send_all = Button(testing_frame, text='Send All', bg='red', command=send_all_tests,
+               borderwidth=0, highlightthickness=0, width=50)
+    send_all.pack()
 
     # Add the server displays
     for i in range(0, 5):
         interfaces.append(Interface(interface_frames[math.floor(i/2)], textCol, bgCol, fontStyle, i, [client_send_socket, client_ip, client_send_port]))
+
+        injectors.append(Injector(testing_frames[math.floor(i/2)], textCol, bgCol, fontStyle, i, [client_send_socket, client_ip, client_send_port]))
+
+    switch_mode()
 
     # Begin raft c++ implementation
     print("Building C++ Raft Implementation...")

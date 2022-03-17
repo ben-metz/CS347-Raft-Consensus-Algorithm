@@ -20,7 +20,7 @@ class MultiListbox(Frame):
             lb = Listbox(
                 frame,
                 width=w,
-                height=8,
+                height=10,
                 borderwidth=0,
                 selectborderwidth=0,
                 relief=FLAT,

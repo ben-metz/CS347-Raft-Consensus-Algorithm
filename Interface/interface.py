@@ -13,7 +13,6 @@ class Interface:
         #self.interface_frame.grid(row=3 * math.floor(index / 2), column=3 * (index - 2* math.floor(index / 2)) + 1)
         
         self.interface_frame.pack(side=LEFT)
-            
 
         self.show_repeated_messages = False
 
