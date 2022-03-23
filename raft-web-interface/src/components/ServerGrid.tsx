@@ -38,36 +38,43 @@ const ServerGrid: FC<IServerGridProps> = ({
         valueFormatter: (value) => value.value.toFixed(2),
         sort: 'desc',
         width: 96,
+        resizable: true,
       },
       {
         field: "state",
         valueGetter: (it) => parseState(it.data.data.state),
         width: 100,
+        resizable: true,
       },
       {
         field: "term",
         valueGetter: (it) => it.data.data.term,
-        width: 68,
+        width: 75,
+        resizable: true,
       },
       {
         field: "vote",
         valueGetter: (it) => it.data.data.vote,
-        width: 68
+        width: 75,
+        resizable: true,
       },
       {
         field: "action",
-        valueGetter: (it) => it.data.data.action
-        
+        valueGetter: (it) => it.data.data.action,
+        width: 250,
+        resizable: true,
       },
       {
         field: "array",
         valueGetter: (it) => it.data.data.database,
-        width: 96
+        width: 120,
+        resizable: true,
       },
       {
         field: "commit",
         valueGetter: (it) => it.data.data.lastCommited,
         width: 100,
+        resizable: true,
       },
   ]);
 

@@ -3,6 +3,11 @@
 #include <chrono>
 #include "server.h"
 #include "database.h"
+#include <string>
+
+#define DATA_UPDATE_MESSAGE "data_update"
+#define REQUEST_VOTE_MESSAGE "request_vote"
+#define APPEND_ENTRIES_MESSAGE "append_entries"
 
 using json = nlohmann::json;
 
@@ -93,7 +98,8 @@ void Raft_Node::resetElectionTimer(){
     this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-void Raft_Node::setTimeout(int time){
+void Raft_Node::setTimeout(int time)
+{
     // Set election timer
     if (this->state != LEADER){
         this->election_timeout = time;
@@ -105,9 +111,258 @@ void Raft_Node::setTimeout(int time){
     this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-void Raft_Node::setTerm(int term){
+void Raft_Node::setTerm(int term)
+{
     // Set election timer
     this->term = term;
+}
+
+void Raft_Node::handleDenyRequestVote(int sender_id, int candidate_id, int last_log_index)
+{
+    std::ostringstream s;
+
+    // §5.2, §5.4: If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
+    if (this->voted_for_id == -1 && last_log_index >= this->commitIndex)
+    {
+        
+        s << "Vote Request from " << sender_id << " granted";
+        std::string resp(s.str());
+
+        this->server->send_details(resp);
+
+        // Indicate vote for candidate that sent message
+        this->voted_for_id = candidate_id;
+
+        // Return successful vote message
+        this->server->sendToServer(sender_id, this->getVoteResponseMessage(true));
+
+        // Reset election timeout
+        this->resetElectionTimer();
+
+        return;
+    }
+
+    s << "Vote Request from " << sender_id << " denied";
+    std::string resp(s.str());
+
+    this->server->sendToServer(sender_id, this->getVoteResponseMessage(false));
+
+    this->server->send_details(resp);
+}
+
+void Raft_Node::handleGrantRequestVote(int sender_id, bool vote_granted)
+{
+    std::ostringstream s;
+    s << "Vote Response from " << sender_id << ": " << std::boolalpha << vote_granted;
+    std::string resp(s.str());
+
+    this->server->send_details(resp);
+
+    // If vote granted, add to count
+    if (vote_granted && this -> state == CANDIDATE)
+    {            
+        if (++this->vote_count > this->server_count / 2.0f)
+        {
+            this->setState(LEADER);
+
+            // send out heartbeats to all servers
+            for (int serverID = 0; serverID < server_count; serverID++)
+                if (serverID != candidate_id)
+                    this->server->sendToServer(this->server->getServerSocketAddress(serverID), this->getAppendEntriesMessage(serverID));
+        
+            // Reset leader state
+            // Spec has +1 for below, but they want log to start at 1 instead of 0
+            for (int i = 0; i < server_count; i++)
+                this->nextIndex[i] = log.size();
+
+            for (int i = 0; i < server_count; i++)
+                this->matchIndex[i] = 0;
+        }
+    }
+}
+
+void Raft_Node::handleRequestVote(json deserialised_json)
+{
+    bool response = deserialised_json["response"].get<bool>();
+
+    if (response) {
+        this->handleGrantRequestVote(deserialised_json["sender_id"].get<int>(), deserialised_json["data"]["vote_granted"].get<bool>());
+    } else {
+        this->handleDenyRequestVote(deserialised_json["sender_id"].get<int>(), deserialised_json["data"]["candidate_id"].get<int>(), deserialised_json["data"]["last_log_index"].get<int>());
+    }
+}
+
+void Raft_Node::handleDataUpdate(json deserialised_json, char* msg)
+{
+    // Apply change to the log if leader
+    if (this->state == LEADER)
+    {
+        LogEntry entry;
+        entry.term = this->term;
+        entry.index = deserialised_json["data"]["index"].get<int>();
+        entry.value = deserialised_json["data"]["value"].get<int>();
+
+        this->log.push_back(entry);
+    }
+    // Otherwise forward it to the leader (if one exists)
+    else if (leader_id >= 0)
+    {
+        this->server->sendToServer(this->server->getServerSocketAddress(leader_id), msg);
+    }
+}
+
+void Raft_Node::handleAppendEntriesResponse(int sender_id, bool success, int prevLogIndex)
+{
+    if (!success)
+    {
+        nextIndex[sender_id]--;
+        if (nextIndex[sender_id] < 0)
+            nextIndex[sender_id] = 0;
+    }
+    else
+    {
+        nextIndex[sender_id] = prevLogIndex + 1;
+
+        // Find the largest index that a majority of servers have replicated
+        int majorityIndex = -1;
+        for (int index = prevLogIndex; index >= 0; index--)
+        {
+            // Count starts at 1 because leader already has it
+            int count = 1;
+            for (int serverID = 0; serverID < server_count; serverID++)
+                if (nextIndex[serverID] > index)
+                    count++;
+            
+            if (count >= server_count / 2.0f)
+            {
+                majorityIndex = index;
+                break;
+            }
+        }
+
+        // Commit changes in order
+        if (commitIndex < majorityIndex)
+        {
+            commitIndex = majorityIndex;
+        }
+    }
+}
+
+void Raft_Node::handleAppendEntriesRequest(
+    int sender_id,
+    int leader_id,
+    int term,
+    int prevLogIndex,
+    int prevLogTerm,
+    int leaderCommit,
+    std::vector<json> entries
+)
+{
+
+    std::ostringstream s;
+    s << "AppendEntry RPC from " << sender_id;
+    std::string resp(s.str());
+    
+    this->server->send_details(resp);
+
+    // Reset random timeout
+    this->resetElectionTimer();
+
+    this -> vote_count = 0;
+
+    if (this->getState() == CANDIDATE){
+        this->setState(FOLLOWER);
+    }
+
+    // Update the leader ID to allow for data forwarding
+    this->leader_id = leader_id;
+
+    // Receiver rule 1
+    // Reply false if term < currentTerm (§5.1)
+    if (term < this->term)
+    {
+        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
+        return;
+    }
+
+    // Receiver rule 2
+    // Reply false if log doesn’t contain an entry at prevLogIndex
+    // whose term matches prevLogTerm (§5.3)
+    // if it doesn't have an entry, or if it has an entry and it doesn't match
+    if (prevLogIndex >= 0 && (prevLogIndex > log.size() || log[prevLogIndex].term != prevLogTerm))
+    {
+        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
+        return;
+    }
+
+    int sentEntriesSize = entries.size();
+    int totalEntries = prevLogIndex + sentEntriesSize;
+    int newEntries = totalEntries - (log.size() - 1);
+    int newEntriesStart = sentEntriesSize - newEntries;
+
+    // Receiver rule 3
+    // If an existing entry conflicts with a new one (same index
+    // but different terms), delete the existing entry and all that
+    // follow it (§5.3)
+    for (int i = 0; i < newEntriesStart - 1; i++)
+    {
+        int index = prevLogIndex + i; // + 1?
+        // Existing index with conflicting term
+        if (log[index].term != entries[i]["term"].get<int>())
+        {
+            for (int j = index; j < log.size(); j++)
+            {
+                log.pop_back();
+            }
+            break;
+        }
+    }
+
+    // Receiver rule 4
+    // Append any new entries not already in the log
+    for (int i = newEntriesStart; i < sentEntriesSize; i++)
+    {
+        LogEntry entry;
+        entry.term = entries[i]["term"].get<int>();
+        entry.index = entries[i]["index"].get<int>();
+        entry.value = entries[i]["value"].get<int>();
+        log.push_back(entry);
+    }
+
+    // Receiver rule 5
+    // If leaderCommit > commitIndex, set commitIndex =
+    // min(leaderCommit, index of last new entry)
+    if (leaderCommit > this->commitIndex)
+    {
+        // Minimum of the two
+        this->commitIndex = (leaderCommit < log.size()) ? leaderCommit : log.size();
+    }
+
+    this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(true));
+}
+
+void Raft_Node::handleAppendEntries(json deserialised_json)
+{
+    if (deserialised_json["response"])
+    {
+        this->handleAppendEntriesResponse(
+            deserialised_json["sender_id"].get<int>(),
+            deserialised_json["data"]["success"].get<bool>(),
+            deserialised_json["data"]["prevLogIndex"].get<int>()
+        );
+    }
+    else
+    {
+        this->handleAppendEntriesRequest(
+            deserialised_json["sender_id"].get<int>(),
+            deserialised_json["data"]["leaderId"].get<int>(),
+            deserialised_json["data"]["term"].get<int>(),
+            deserialised_json["data"]["prevLogIndex"].get<int>(),
+            deserialised_json["data"]["prevLogTerm"].get<int>(),
+            deserialised_json["data"]["leaderCommit"].get<int>(),
+            deserialised_json["data"]["entries"]
+        );
+    }
 }
 
 // When a server receives a message, it is fed into this function where
@@ -120,7 +375,7 @@ void Raft_Node::input_message(char *msg)
     json deserialised_json = json::parse(std::string(msg));
 
     // If received term > nodes term, then step down
-    if ((deserialised_json["message_type"] != "data_update") && (deserialised_json["data"]["term"].get<int>() > this->term))
+    if ((deserialised_json["message_type"] != DATA_UPDATE_MESSAGE) && (deserialised_json["data"]["term"].get<int>() > this->term))
     {
         // Update the node term to the term of received message
         this->term = deserialised_json["data"]["term"].get<int>();
@@ -135,224 +390,20 @@ void Raft_Node::input_message(char *msg)
     }
 
     // If message is a vote request, respond with a vote response
-    if ((deserialised_json["message_type"] == "request_vote") &&
-        (deserialised_json["response"] == "false"))
+    if (deserialised_json["message_type"] == REQUEST_VOTE_MESSAGE)
     {
-        std::ostringstream s;
-
-        // §5.2, §5.4: If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote
-        if (this->voted_for_id == -1 && deserialised_json["data"]["last_log_index"].get<int>() >= this->commitIndex)
-        {
-            
-            s << "Vote Request from " << deserialised_json["sender_id"]<< " granted";
-            std::string resp(s.str());
-
-            this->server->send_details(resp);
-
-            // Indicate vote for candidate that sent message
-            this->voted_for_id = deserialised_json["data"]["candidate_id"].get<int>();
-
-            // Return successful vote message
-            this->server->sendToServer(deserialised_json["sender_id"].get<int>(), this->getVoteResponseMessage(true));
-
-            // Reset election timeout
-            this->resetElectionTimer();
-
-            return;
-        }
-
-        s << "Vote Request from " << deserialised_json["sender_id"]<< " denied";
-        std::string resp(s.str());
-
-        this->server->sendToServer(deserialised_json["sender_id"].get<int>(), this->getVoteResponseMessage(false));
-
-        this->server->send_details(resp);
+        this->handleRequestVote(deserialised_json);
     }
 
-    // If message is a vote response, check if valid
-    if ((deserialised_json["message_type"] == "request_vote") &&
-        (deserialised_json["response"] == "true"))
+    if (deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE)
     {
-        std::ostringstream s;
-        s << "Vote Response from " << deserialised_json["sender_id"] << ": " << deserialised_json["data"]["vote_granted"];
-        std::string resp(s.str());
-
-        this->server->send_details(resp);
-
-        // If vote granted, add to count
-        if (deserialised_json["data"]["vote_granted"] == true && this -> state == CANDIDATE)
-        {            
-            if (++this->vote_count > this->server_count / 2.0f)
-            {
-                this->setState(LEADER);
-
-                // send out heartbeats to all servers
-                for (int serverID = 0; serverID < server_count; serverID++)
-                    if (serverID != candidate_id)
-                        this->server->sendToServer(this->server->getServerSocketAddress(serverID), this->getAppendEntriesMessage(serverID));
-            
-                // Reset leader state
-                // Spec has +1 for below, but they want log to start at 1 instead of 0
-                for (int i = 0; i < server_count; i++)
-                    this->nextIndex[i] = log.size();
-
-                for (int i = 0; i < server_count; i++)
-                    this->matchIndex[i] = 0;
-            }
-        }
-    }
-
-    // If message is an append entry, check if valid
-    if ((deserialised_json["message_type"] == "append_entries") &&
-        (deserialised_json["response"] == "false"))
-    {
-
-        std::ostringstream s;
-        s << "AppendEntry RPC from " << deserialised_json["sender_id"];
-        std::string resp(s.str());
-        
-        this->server->send_details(resp);
-
-        int sender_id = deserialised_json["sender_id"].get<int>();
-
-        // Reset random timeout
-        this->resetElectionTimer();
-
-        this -> vote_count = 0;
-
-        if (this->getState() == CANDIDATE){
-            this->setState(FOLLOWER);
-        }
-
-        // Update the leader ID to allow for data forwarding
-        leader_id = deserialised_json["data"]["leaderId"].get<int>();
-
-        // Receiver rule 1
-        // Reply false if term < currentTerm (§5.1)
-        if (deserialised_json["data"]["term"].get<int>() < term)
-        {
-            this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
-            return;
-        }
-
-        // Receiver rule 2
-        // Reply false if log doesn’t contain an entry at prevLogIndex
-        // whose term matches prevLogTerm (§5.3)
-        int prevLogIndex = deserialised_json["data"]["prevLogIndex"].get<int>();
-        int prevLogTerm = deserialised_json["data"]["prevLogTerm"].get<int>();
-        // if it doesn't have an entry, or if it has an entry and it doesn't match
-        if (prevLogIndex >= 0 && (prevLogIndex > log.size() || log[prevLogIndex].term != prevLogTerm))
-        {
-            this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
-            return;
-        }
-
-        int sentEntriesSize = deserialised_json["data"]["entries"].size();
-        int totalEntries = prevLogIndex + sentEntriesSize;
-        int newEntries = totalEntries - (log.size() - 1);
-        int newEntriesStart = sentEntriesSize - newEntries;
-
-        // Receiver rule 3
-        // If an existing entry conflicts with a new one (same index
-        // but different terms), delete the existing entry and all that
-        // follow it (§5.3)
-        for (int i = 0; i < newEntriesStart - 1; i++)
-        {
-            int index = prevLogIndex + i; // + 1?
-            // Existing index with conflicting term
-            if (log[index].term != deserialised_json["data"]["entries"][i]["term"].get<int>())
-            {
-                for (int j = index; j < log.size(); j++)
-                {
-                    log.pop_back();
-                }
-                break;
-            }
-        }
-
-        // Receiver rule 4
-        // Append any new entries not already in the log
-        for (int i = newEntriesStart; i < sentEntriesSize; i++)
-        {
-            LogEntry entry;
-            entry.term = deserialised_json["data"]["entries"][i]["term"].get<int>();
-            entry.index = deserialised_json["data"]["entries"][i]["index"].get<int>();
-            entry.value = deserialised_json["data"]["entries"][i]["value"].get<int>();
-            log.push_back(entry);
-        }
-
-        // Receiver rule 5
-        // If leaderCommit > commitIndex, set commitIndex =
-        // min(leaderCommit, index of last new entry)
-        int leaderCommit = deserialised_json["data"]["leaderCommit"].get<int>();
-        if (leaderCommit > commitIndex)
-        {
-            // Minimum of the two
-            commitIndex = (leaderCommit < log.size()) ? leaderCommit : log.size();
-        }
-
-        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(true));
-    }
-
-    if ((deserialised_json["message_type"] == "append_entries") &&
-        (deserialised_json["response"] == "true"))
-    {
-        int sender_id = deserialised_json["sender_id"].get<int>();
-
-        if (!deserialised_json["data"]["success"].get<bool>())
-        {
-            nextIndex[sender_id]--;
-            if (nextIndex[sender_id] < 0)
-                nextIndex[sender_id] = 0;
-        }
-        else
-        {
-            int prevLogIndex = deserialised_json["data"]["prevLogIndex"].get<int>();
-            nextIndex[sender_id] = prevLogIndex + 1;
-
-            // Find the largest index that a majority of servers have replicated
-            int majorityIndex = -1;
-            for (int index = prevLogIndex; index >= 0; index--)
-            {
-                // Count starts at 1 because leader already has it
-                int count = 1;
-                for (int serverID = 0; serverID < server_count; serverID++)
-                    if (nextIndex[serverID] > index)
-                        count++;
-                
-                if (count >= server_count / 2.0f)
-                {
-                    majorityIndex = index;
-                    break;
-                }
-            }
-
-            // Commit changes in order
-            if (commitIndex < majorityIndex)
-            {
-                commitIndex = majorityIndex;
-            }
-        }
+        this->handleAppendEntries(deserialised_json);
     }
 
     // Handle a data update message
-    if (deserialised_json["message_type"] == "data_update")
+    if (deserialised_json["message_type"] == DATA_UPDATE_MESSAGE)
     {
-        // Apply change to the log if leader
-        if (this->state == LEADER)
-        {
-            LogEntry entry;
-            entry.term = this->term;
-            entry.index = deserialised_json["data"]["index"].get<int>();
-            entry.value = deserialised_json["data"]["value"].get<int>();
-
-            this->log.push_back(entry);
-        }
-        // Otherwise forward it to the leader (if one exists)
-        else if (leader_id >= 0)
-        {
-            this->server->sendToServer(this->server->getServerSocketAddress(leader_id), msg);
-        }
+        this->handleDataUpdate(deserialised_json, msg);
     }
 }
 
@@ -361,17 +412,15 @@ bool Raft_Node::checkElectionTimer()
 {
     auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    if (millisec_since_epoch - this->time_of_last_message > this->election_timeout)
+    bool is_timeout_reached = millisec_since_epoch - this->time_of_last_message > this->election_timeout;
+
+    if (is_timeout_reached)
     {
         // Reset time of last interaction if timeout reached
         this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return is_timeout_reached;
 }
 
 // This function checks if the random timeout has expired, if so, take appropriate action
@@ -379,17 +428,15 @@ bool Raft_Node::checkHeartbeatTimer()
 {
     auto millisec_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-    if (millisec_since_epoch - this->time_of_last_heartbeat > HEARTBEAT_TIMEOUT)
+    bool is_timeout_reached = millisec_since_epoch - this->time_of_last_heartbeat > HEARTBEAT_TIMEOUT;
+
+    if (is_timeout_reached)
     {
         // Reset time of last interaction if timeout reached
         this->time_of_last_heartbeat = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
 
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    return is_timeout_reached;
 }
 
 // Returns a random int between 150 and 300
@@ -412,8 +459,8 @@ std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_te
 
     json vote_request_data = {
         {"sender_id", this->candidate_id},
-        {"message_type", "request_vote"},
-        {"response", "false"},
+        {"message_type", REQUEST_VOTE_MESSAGE},
+        {"response", false},
         {"data", {
                      {"term", this->term},                 // candidate's term
                      {"candidate_id", this->candidate_id}, // candidate requesting vote
@@ -431,8 +478,8 @@ std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
 
     json vote_request_data = {
         {"sender_id", this->candidate_id},
-        {"message_type", "request_vote"},
-        {"response", "true"},
+        {"message_type", REQUEST_VOTE_MESSAGE},
+        {"response", true},
         {"data", {
                      {"term", this->term},         // candidate's term
                      {"vote_granted", voteGranted} // candidate requesting vote
@@ -451,8 +498,8 @@ std::string Raft_Node::getAppendEntriesMessage(int server)
 
     json appendEntriesJson = {
         {"sender_id", this->candidate_id},
-        {"message_type", "append_entries"},
-        {"response", "false"},
+        {"message_type", APPEND_ENTRIES_MESSAGE},
+        {"response", false},
         {"data",
             {
                 {"term", this->term},
@@ -488,8 +535,8 @@ std::string Raft_Node::getAppendEntriesResponseMessage(bool success)
     // a given server has added to its log
     json append_entries_json = {
         {"sender_id", this->candidate_id},
-        {"message_type", "append_entries"},
-        {"response", "true"},
+        {"message_type", APPEND_ENTRIES_MESSAGE},
+        {"response", true},
         {"data",
             {
                 {"term", this->term},
