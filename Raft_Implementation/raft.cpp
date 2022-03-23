@@ -196,6 +196,25 @@ void Raft_Node::handleRequestVote(json deserialised_json)
     }
 }
 
+void Raft_Node::handleDataUpdate(json deserialised_json)
+{
+    // Apply change to the log if leader
+    if (this->state == LEADER)
+    {
+        LogEntry entry;
+        entry.term = this->term;
+        entry.index = deserialised_json["data"]["index"].get<int>();
+        entry.value = deserialised_json["data"]["value"].get<int>();
+
+        this->log.push_back(entry);
+    }
+    // Otherwise forward it to the leader (if one exists)
+    else if (leader_id >= 0)
+    {
+        this->server->sendToServer(this->server->getServerSocketAddress(leader_id), msg);
+    }
+}
+
 // When a server receives a message, it is fed into this function where
 // it is deserialised and the appropriate action is taken
 void Raft_Node::input_message(char *msg)
@@ -362,21 +381,7 @@ void Raft_Node::input_message(char *msg)
     // Handle a data update message
     if (deserialised_json["message_type"] == DATA_UPDATE_MESSAGE)
     {
-        // Apply change to the log if leader
-        if (this->state == LEADER)
-        {
-            LogEntry entry;
-            entry.term = this->term;
-            entry.index = deserialised_json["data"]["index"].get<int>();
-            entry.value = deserialised_json["data"]["value"].get<int>();
-
-            this->log.push_back(entry);
-        }
-        // Otherwise forward it to the leader (if one exists)
-        else if (leader_id >= 0)
-        {
-            this->server->sendToServer(this->server->getServerSocketAddress(leader_id), msg);
-        }
+        this->handleDataUpdate(deserialised_json);
     }
 }
 

@@ -58,6 +58,8 @@ private:
     void handleGrantRequestVote(int sender_id, bool vote_granted);
     void handleDenyRequestVote(int sender_id, int candidate_id, int last_log_index);
 
+    void handleDataUpdate(json deserialised_json);
+
 public:
     Raft_Node(int id, int server_count, Server *server);
     ~Raft_Node();
