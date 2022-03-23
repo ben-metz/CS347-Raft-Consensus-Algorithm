@@ -64,6 +64,15 @@ private:
     void handleDataUpdate(json deserialised_json, char* msg);
 
     void handleAppendEntries(json deserialised_json);
+    void handleAppendEntriesRequest(
+        int sender_id,
+        int leader_id,
+        int term,
+        int prevLogIndex,
+        int prevLogTerm,
+        int leaderCommit,
+        std::vector<json> entries
+    );
     void handleAppendEntriesResponse(int sender_id, bool success, int prevLogIndex);
 
 public:

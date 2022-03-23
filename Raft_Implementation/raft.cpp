@@ -252,6 +252,98 @@ void Raft_Node::handleAppendEntriesResponse(int sender_id, bool success, int pre
     }
 }
 
+void Raft_Node::handleAppendEntriesRequest(
+    int sender_id,
+    int leader_id,
+    int term,
+    int prevLogIndex,
+    int prevLogTerm,
+    int leaderCommit,
+    std::vector<json> entries
+)
+{
+
+    std::ostringstream s;
+    s << "AppendEntry RPC from " << sender_id;
+    std::string resp(s.str());
+    
+    this->server->send_details(resp);
+
+    // Reset random timeout
+    this->resetElectionTimer();
+
+    this -> vote_count = 0;
+
+    if (this->getState() == CANDIDATE){
+        this->setState(FOLLOWER);
+    }
+
+    // Update the leader ID to allow for data forwarding
+    this->leader_id = leader_id;
+
+    // Receiver rule 1
+    // Reply false if term < currentTerm (§5.1)
+    if (term < this->term)
+    {
+        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
+        return;
+    }
+
+    // Receiver rule 2
+    // Reply false if log doesn’t contain an entry at prevLogIndex
+    // whose term matches prevLogTerm (§5.3)
+    // if it doesn't have an entry, or if it has an entry and it doesn't match
+    if (prevLogIndex >= 0 && (prevLogIndex > log.size() || log[prevLogIndex].term != prevLogTerm))
+    {
+        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
+        return;
+    }
+
+    int sentEntriesSize = entries.size();
+    int totalEntries = prevLogIndex + sentEntriesSize;
+    int newEntries = totalEntries - (log.size() - 1);
+    int newEntriesStart = sentEntriesSize - newEntries;
+
+    // Receiver rule 3
+    // If an existing entry conflicts with a new one (same index
+    // but different terms), delete the existing entry and all that
+    // follow it (§5.3)
+    for (int i = 0; i < newEntriesStart - 1; i++)
+    {
+        int index = prevLogIndex + i; // + 1?
+        // Existing index with conflicting term
+        if (log[index].term != entries[i]["term"].get<int>())
+        {
+            for (int j = index; j < log.size(); j++)
+            {
+                log.pop_back();
+            }
+            break;
+        }
+    }
+
+    // Receiver rule 4
+    // Append any new entries not already in the log
+    for (int i = newEntriesStart; i < sentEntriesSize; i++)
+    {
+        LogEntry entry;
+        entry.term = entries[i]["term"].get<int>();
+        entry.index = entries[i]["index"].get<int>();
+        entry.value = entries[i]["value"].get<int>();
+        log.push_back(entry);
+    }
+
+    // Receiver rule 5
+    // If leaderCommit > commitIndex, set commitIndex =
+    // min(leaderCommit, index of last new entry)
+    if (leaderCommit > this->commitIndex)
+    {
+        // Minimum of the two
+        this->commitIndex = (leaderCommit < log.size()) ? leaderCommit : log.size();
+    }
+
+    this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(true));
+}
 
 void Raft_Node::handleAppendEntries(json deserialised_json)
 {
@@ -259,6 +351,15 @@ void Raft_Node::handleAppendEntries(json deserialised_json)
     if ((deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE) &&
         (deserialised_json["response"] == "false"))
     {
+        this->handleAppendEntriesRequest(
+            deserialised_json["sender_id"].get<int>(),
+            deserialised_json["data"]["leaderId"].get<int>(),
+            deserialised_json["data"]["term"].get<int>(),
+            deserialised_json["data"]["prevLogIndex"].get<int>(),
+            deserialised_json["data"]["prevLogTerm"].get<int>(),
+            deserialised_json["data"]["leaderCommit"].get<int>(),
+            deserialised_json["data"]["entries"]
+        );
 
         std::ostringstream s;
         s << "AppendEntry RPC from " << deserialised_json["sender_id"];
