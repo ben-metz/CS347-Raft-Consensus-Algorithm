@@ -5,12 +5,12 @@ import json
 
 # Class that displays details for each server
 class Interface:
+    # Initialise tkinter components of interface
     def __init__(self, frame, textCol, bgCol, font, index, socket_details):
         self.index = index
         self.socket_details = socket_details
 
         self.interface_frame =  Frame(frame, bg=bgCol)
-        #self.interface_frame.grid(row=3 * math.floor(index / 2), column=3 * (index - 2* math.floor(index / 2)) + 1)
         
         self.interface_frame.pack(side=LEFT)
 
@@ -26,18 +26,22 @@ class Interface:
         self.label.configure(foreground=textCol, background=bgCol)
         self.label.grid(row=0, column=0)
 
-        self.kill_button = Button(self.interface_frame, text='Start', width=5, bg='red', fg='black', command=self.kill,
-                                  borderwidth=0, highlightthickness=0)
+        self.kill_button = Button(self.interface_frame, text='Start', width=5, 
+            bg='red', fg='black', command=self.kill,
+            borderwidth=0, highlightthickness=0)
+
         self.kill_button.grid(row=0, column=0, sticky=E+S, padx='25')
 
-        self.repeat_button = Button(self.interface_frame, text='Show', width=10, bg='orange', fg='black', command=self.toggle_repeated_messages,
-                                  borderwidth=0, highlightthickness=0)
+        self.repeat_button = Button(self.interface_frame, text='Show', 
+            width=10, bg='orange', fg='black', command=self.toggle_repeated_messages,
+            borderwidth=0, highlightthickness=0)
+        
         self.update_repeat_text()
         self.repeat_button.grid(row=0, column=0, sticky=W+S, padx='25')
 
+        # Multilist box that stores the entries
         self.text_box = MultiListbox(self.interface_frame, (('State', 10), ('Term',
-                                                             5), ('Vote', 5), ('Action', 25), ('Array', 15),
-                                             ('Commit', 7), ('Time', 7)))
+            5), ('Vote', 5), ('Action', 25), ('Array', 15), ('Commit', 7), ('Time', 7)))
         self.text_box.grid(row=1, column=0, padx='25', pady='10')
 
     # Disables comms of server if running, else enables comms
@@ -60,6 +64,7 @@ class Interface:
         self.show_repeated_messages = not self.show_repeated_messages
         self.update_repeat_text()
 
+    # Updates the time/title of the server
     def update_time(self, time: str):
         self.label_text.set('Server %d (Current Time: %s)' % (self.index, time))
 
@@ -73,6 +78,7 @@ class Interface:
         self.kill_button["text"] = "Start"
         self.kill_button["bg"] = "red"
 
+    # Compares data for removing duplicate entries
     def _compare_data(self, data, other):
         for (index, (it, other_it)) in enumerate(zip(data, other)):
             if index == 6:
@@ -88,8 +94,8 @@ class Interface:
             return
         
         self.text_box.insert(0, data)
-        #self.text_box.remove_last()
 
+    # Clears entries
     def clear(self):
         self.text_box.clear()
         self.last_message = ""
@@ -98,8 +104,6 @@ class Interface:
     def set_stopped(self, new_status):
         update_msg = {"message_type": "set_server_status", "data": {
             "server_id": self.index, "stopped": new_status}}
-
-        print("Sending: ", update_msg, "to", self.index)
 
         # Send to Manager
         self.socket_details[0].sendto(bytes(json.dumps(update_msg), 'utf-8'),

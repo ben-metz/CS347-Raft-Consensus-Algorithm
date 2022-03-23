@@ -14,6 +14,7 @@ import subprocess
 import signal
 import atexit
 
+# Kills manager subprocess when exited
 def exit_handler():
     global proc, started
 
@@ -42,9 +43,9 @@ def send_command():
             client_send_socket.sendto(bytes(json.dumps(update_msg), 'utf-8'),
                                       (client_ip, client_send_port))
         else:
-            print('Error:\tInvalid Input')
-    except:
-        print('Error:\tInvalid Input')
+            print('Error:\tInvalid Numerical Input')
+    except Exception as e:
+        print('Error:\tInvalid Input\nError:', e)
 
 # Clears the server interface logs
 def clear_interfaces():
@@ -77,8 +78,7 @@ def restart_raft():
 
     proc = subprocess.Popen(["../Raft_Implementation/manager"])
 
-    #clear_interfaces()
-
+# Sends all test cases to associated servers
 def send_all_tests():
     for i in range(0, len(injectors)):
         injectors[i].send_test()
@@ -113,8 +113,10 @@ def handle_packets(client_receive_socket):
 
                 if (not blocked):
                     interfaces[int(data['id'])].insert((states[data['state']],
-                                                            data['term'], data['vote'], data['action'],
-                                                            data['database'], data['lastCommited'], str(round(time.time() - start_time, 2))))
+                        data['term'], data['vote'], data['action'],
+                        data['database'], data['lastCommited'], 
+                        str(round(time.time() - start_time, 2))))
+                    
             elif (decoded['message_type'] == "connection_status"):
                 # If connection status, update connected status
                 if decoded['data'] == 'started':
@@ -143,6 +145,7 @@ def handle_packets(client_receive_socket):
         except:
             print('Error:\tDecode Error')
 
+# Switch between overview and test mode
 def switch_mode():
     global mode, mode_switch
     if (mode == 0):
@@ -166,8 +169,6 @@ def main():
     # Begin UI loop
     root.mainloop()
 
-    #proc = subprocess.Popen(["../Raft_Implementation/manager"])
-
 
 if __name__ == '__main__':
 
@@ -180,9 +181,9 @@ if __name__ == '__main__':
     client_receive_port = 12345
     client_send_port = 12346
 
+    # Flags
     connected = False
     blocked = False
-
     started = False
 
     start_time = 0
@@ -205,9 +206,14 @@ if __name__ == '__main__':
     root = Tk()
     root.geometry("1280x720")
 
+    root.configure(background=bgCol)
+    root.title('ESP Interface')
+
+    # Fonts
     fontStyle = tkFont.Font(family='Piboto', size=16)
     titleFont = tkFont.Font(family='Piboto', size=32)
 
+    # Define root frame
     root_frame = Frame(root, background=bgCol)
     root_frame.pack(fill=BOTH, expand=1)
 
@@ -221,17 +227,13 @@ if __name__ == '__main__':
                  borderwidth=0, highlightthickness=0)
     mode_switch.pack()
 
-    # Root frame
+    # Overview frame
     view_update_frame = Frame(root_frame, bg=bgCol)
     view_update_frame.pack(expand=1)
 
-    # Root frame
+    # Testing frame
     testing_frame = Frame(root_frame, bg=bgCol)
     testing_frame.pack(expand=1)
-
-    root.configure(background=bgCol)
-
-    root.title('ESP Interface')
 
     # Button frame
     button_frame = Frame(view_update_frame, bg=bgCol)
@@ -258,21 +260,21 @@ if __name__ == '__main__':
     input_frame.pack(expand=1)
 
     # Inputs
-    server_label = Label(input_frame, text='Server ID', font=fontStyle)
+    server_label = Label(input_frame, text='Server ID (0-4)', font=fontStyle)
     server_label.configure(foreground=textCol, background=bgCol)
     server_label.grid(row=1, column=0)
 
     server = Entry(input_frame, borderwidth=0)
     server.grid(row=2, column=0, padx=10)
 
-    index_label = Label(input_frame, text='Index', font=fontStyle)
+    index_label = Label(input_frame, text='Index (0-4)', font=fontStyle)
     index_label.configure(foreground=textCol, background=bgCol)
     index_label.grid(row=1, column=1)
 
     index = Entry(input_frame, borderwidth=0)
     index.grid(row=2, column=1, padx=10)
 
-    value_label = Label(input_frame, text='Value', font=fontStyle)
+    value_label = Label(input_frame, text='Value (0-99)', font=fontStyle)
     value_label.configure(foreground=textCol, background=bgCol)
     value_label.grid(row=1, column=2)
 
