@@ -1,8 +1,10 @@
 #include "raft.h"
 #include <iostream>
+#include <vector>
 #include <chrono>
 #include "server.h"
 #include "database.h"
+#include <stdexcept>
 
 #define DATA_UPDATE_MESSAGE "data_update"
 #define REQUEST_VOTE_MESSAGE "request_vote"
@@ -182,11 +184,17 @@ void Raft_Node::handleGrantRequestVote(int sender_id, bool vote_granted)
 
 void Raft_Node::handleRequestVote(json deserialised_json)
 {
-    bool response = false;
+    bool response;
 
     if (deserialised_json["response"] == "true")
     {
         response = true;
+    } else if (deserialised_json["response"] == "false")
+    {
+        response = false;
+    } else
+    {
+        return;
     }
 
     if (response) {
@@ -196,7 +204,7 @@ void Raft_Node::handleRequestVote(json deserialised_json)
     }
 }
 
-void Raft_Node::handleDataUpdate(json deserialised_json)
+void Raft_Node::handleDataUpdate(json deserialised_json, char* msg)
 {
     // Apply change to the log if leader
     if (this->state == LEADER)
@@ -212,6 +220,171 @@ void Raft_Node::handleDataUpdate(json deserialised_json)
     else if (leader_id >= 0)
     {
         this->server->sendToServer(this->server->getServerSocketAddress(leader_id), msg);
+    }
+}
+
+void Raft_Node::handleAppendEntriesRequest(
+    int sender_id,
+    int leader_id,
+    int term,
+    int prev_log_index,
+    int prev_log_term,
+    int leader_commit,
+    std::vector<json> entries)
+{
+
+    std::ostringstream s;
+    s << "AppendEntry RPC from " << sender_id;
+    std::string resp(s.str());
+    
+    this->server->send_details(resp);
+
+    // Reset random timeout
+    this->resetElectionTimer();
+
+    this -> vote_count = 0;
+
+    if (this->getState() == CANDIDATE){
+        this->setState(FOLLOWER);
+    }
+
+    // Update the leader ID to allow for data forwarding
+    this -> leader_id = leader_id;
+
+    // Receiver rule 1
+    // Reply false if term < currentTerm (§5.1)
+    if (term < this -> term)
+    {
+        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
+        return;
+    }
+
+    // Receiver rule 2
+    // Reply false if log doesn’t contain an entry at prev_log_index
+    // whose term matches prev_log_term (§5.3)
+    // if it doesn't have an entry, or if it has an entry and it doesn't match
+    if (prev_log_index >= 0 && (prev_log_index > log.size() || log[prev_log_index].term != prev_log_term))
+    {
+        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
+        return;
+    }
+
+    int sentEntriesSize = entries.size();
+    int totalEntries = prev_log_index + sentEntriesSize;
+    int newEntries = totalEntries - (this->log.size() - 1);
+    int newEntriesStart = sentEntriesSize - newEntries;
+
+    // Receiver rule 3
+    // If an existing entry conflicts with a new one (same index
+    // but different terms), delete the existing entry and all that
+    // follow it (§5.3)
+    for (int i = 0; i < newEntriesStart - 1; i++)
+    {
+        int index = prev_log_index + i; // + 1?
+        // Existing index with conflicting term
+        if (log[index].term != entries[i]["term"].get<int>())
+        {
+            for (int j = index; j < log.size(); j++)
+            {
+                log.pop_back();
+            }
+            break;
+        }
+    }
+
+    // Receiver rule 4
+    // Append any new entries not already in the log
+    for (int i = newEntriesStart; i < sentEntriesSize; i++)
+    {
+        LogEntry entry;
+        entry.term = entries[i]["term"].get<int>();
+        entry.index = entries[i]["index"].get<int>();
+        entry.value = entries[i]["value"].get<int>();
+        log.push_back(entry);
+    }
+
+    // Receiver rule 5
+    // If leader_commit > commitIndex, set commitIndex =
+    // min(leader_commit, index of last new entry)
+    if (leader_commit > this->commitIndex)
+    {
+        // Minimum of the two
+        this->commitIndex = (leader_commit < log.size()) ? leader_commit : log.size();
+    }
+
+    this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(true));
+}
+
+void Raft_Node::handleAppendEntriesResponse(int sender_id, bool success, int prev_log_index)
+{
+    if (!success)
+    {
+        nextIndex[sender_id]--;
+        if (nextIndex[sender_id] < 0)
+            nextIndex[sender_id] = 0;
+    }
+    else
+    {
+        nextIndex[sender_id] = prev_log_index + 1;
+
+        // Find the largest index that a majority of servers have replicated
+        int majorityIndex = -1;
+        for (int index = prev_log_index; index >= 0; index--)
+        {
+            // Count starts at 1 because leader already has it
+            int count = 1;
+            for (int serverID = 0; serverID < server_count; serverID++)
+                if (nextIndex[serverID] > index)
+                    count++;
+            
+            if (count >= server_count / 2.0f)
+            {
+                majorityIndex = index;
+                break;
+            }
+        }
+
+        // Commit changes in order
+        if (this->commitIndex < majorityIndex)
+        {
+            this -> commitIndex = majorityIndex;
+        }
+    }
+}
+
+void Raft_Node::handleAppendEntries(json deserialised_json)
+{
+    bool isResponseMessage;
+
+    if (deserialised_json["response"] == "true")
+    {
+        isResponseMessage = true;
+    } else if (deserialised_json["response"] == "false")
+    {
+        isResponseMessage = false;
+    } else
+    {
+        return;
+    }
+
+    if (isResponseMessage)
+    {
+        this->handleAppendEntriesResponse(
+            deserialised_json["sender_id"].get<int>(),
+            deserialised_json["data"]["success"].get<bool>(),
+            deserialised_json["data"]["prevLogIndex"].get<int>()
+        );
+    } else
+    {
+        this->handleAppendEntriesRequest(
+            deserialised_json["sender_id"].get<int>(),
+            deserialised_json["data"]["leaderId"].get<int>(),
+            deserialised_json["data"]["term"].get<int>(),
+            deserialised_json["data"]["prevLogIndex"].get<int>(),
+            deserialised_json["data"]["prevLogTerm"].get<int>(),
+            deserialised_json["data"]["leaderCommit"].get<int>(),
+            deserialised_json["data"]["entries"]
+        );
     }
 }
 
@@ -246,142 +419,15 @@ void Raft_Node::input_message(char *msg)
     }
 
     // If message is an append entry, check if valid
-    if ((deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE) &&
-        (deserialised_json["response"] == "false"))
+    if (deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE)
     {
-
-        std::ostringstream s;
-        s << "AppendEntry RPC from " << deserialised_json["sender_id"];
-        std::string resp(s.str());
-        
-        this->server->send_details(resp);
-
-        int sender_id = deserialised_json["sender_id"].get<int>();
-
-        // Reset random timeout
-        this->resetElectionTimer();
-
-        this -> vote_count = 0;
-
-        if (this->getState() == CANDIDATE){
-            this->setState(FOLLOWER);
-        }
-
-        // Update the leader ID to allow for data forwarding
-        leader_id = deserialised_json["data"]["leaderId"].get<int>();
-
-        // Receiver rule 1
-        // Reply false if term < currentTerm (§5.1)
-        if (deserialised_json["data"]["term"].get<int>() < term)
-        {
-            this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
-            return;
-        }
-
-        // Receiver rule 2
-        // Reply false if log doesn’t contain an entry at prevLogIndex
-        // whose term matches prevLogTerm (§5.3)
-        int prevLogIndex = deserialised_json["data"]["prevLogIndex"].get<int>();
-        int prevLogTerm = deserialised_json["data"]["prevLogTerm"].get<int>();
-        // if it doesn't have an entry, or if it has an entry and it doesn't match
-        if (prevLogIndex >= 0 && (prevLogIndex > log.size() || log[prevLogIndex].term != prevLogTerm))
-        {
-            this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
-            return;
-        }
-
-        int sentEntriesSize = deserialised_json["data"]["entries"].size();
-        int totalEntries = prevLogIndex + sentEntriesSize;
-        int newEntries = totalEntries - (log.size() - 1);
-        int newEntriesStart = sentEntriesSize - newEntries;
-
-        // Receiver rule 3
-        // If an existing entry conflicts with a new one (same index
-        // but different terms), delete the existing entry and all that
-        // follow it (§5.3)
-        for (int i = 0; i < newEntriesStart - 1; i++)
-        {
-            int index = prevLogIndex + i; // + 1?
-            // Existing index with conflicting term
-            if (log[index].term != deserialised_json["data"]["entries"][i]["term"].get<int>())
-            {
-                for (int j = index; j < log.size(); j++)
-                {
-                    log.pop_back();
-                }
-                break;
-            }
-        }
-
-        // Receiver rule 4
-        // Append any new entries not already in the log
-        for (int i = newEntriesStart; i < sentEntriesSize; i++)
-        {
-            LogEntry entry;
-            entry.term = deserialised_json["data"]["entries"][i]["term"].get<int>();
-            entry.index = deserialised_json["data"]["entries"][i]["index"].get<int>();
-            entry.value = deserialised_json["data"]["entries"][i]["value"].get<int>();
-            log.push_back(entry);
-        }
-
-        // Receiver rule 5
-        // If leaderCommit > commitIndex, set commitIndex =
-        // min(leaderCommit, index of last new entry)
-        int leaderCommit = deserialised_json["data"]["leaderCommit"].get<int>();
-        if (leaderCommit > commitIndex)
-        {
-            // Minimum of the two
-            commitIndex = (leaderCommit < log.size()) ? leaderCommit : log.size();
-        }
-
-        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(true));
-    }
-
-    if ((deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE) &&
-        (deserialised_json["response"] == "true"))
-    {
-        int sender_id = deserialised_json["sender_id"].get<int>();
-
-        if (!deserialised_json["data"]["success"].get<bool>())
-        {
-            nextIndex[sender_id]--;
-            if (nextIndex[sender_id] < 0)
-                nextIndex[sender_id] = 0;
-        }
-        else
-        {
-            int prevLogIndex = deserialised_json["data"]["prevLogIndex"].get<int>();
-            nextIndex[sender_id] = prevLogIndex + 1;
-
-            // Find the largest index that a majority of servers have replicated
-            int majorityIndex = -1;
-            for (int index = prevLogIndex; index >= 0; index--)
-            {
-                // Count starts at 1 because leader already has it
-                int count = 1;
-                for (int serverID = 0; serverID < server_count; serverID++)
-                    if (nextIndex[serverID] > index)
-                        count++;
-                
-                if (count >= server_count / 2.0f)
-                {
-                    majorityIndex = index;
-                    break;
-                }
-            }
-
-            // Commit changes in order
-            if (commitIndex < majorityIndex)
-            {
-                commitIndex = majorityIndex;
-            }
-        }
+        this->handleAppendEntries(deserialised_json);
     }
 
     // Handle a data update message
     if (deserialised_json["message_type"] == DATA_UPDATE_MESSAGE)
     {
-        this->handleDataUpdate(deserialised_json);
+        this->handleDataUpdate(deserialised_json, msg);
     }
 }
 
@@ -469,8 +515,8 @@ std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
 // Returns the vote request message
 std::string Raft_Node::getAppendEntriesMessage(int server)
 {
-    int prevLogIndex = nextIndex[server] - 1;
-    int prevLogTerm = (prevLogIndex < log.size() && prevLogIndex >= 0) ? log[prevLogIndex].term : 0;
+    int prev_log_index = nextIndex[server] - 1;
+    int prev_log_term = (prev_log_index < log.size() && prev_log_index >= 0) ? log[prev_log_index].term : 0;
 
     //this->server->send_details("AppendEntries Sent");
 
@@ -482,8 +528,8 @@ std::string Raft_Node::getAppendEntriesMessage(int server)
             {
                 {"term", this->term},
                 {"leaderId", this->candidate_id},
-                {"prevLogIndex", prevLogIndex},
-                {"prevLogTerm", prevLogTerm},
+                {"prev_log_index", prev_log_index},
+                {"prev_log_term", prev_log_term},
                 {"leaderCommit", commitIndex},
                 {"entries", json::array()}
             }
@@ -506,9 +552,9 @@ std::string Raft_Node::getAppendEntriesMessage(int server)
 // Returns a string representation of a response message to send
 std::string Raft_Node::getAppendEntriesResponseMessage(bool success)
 {
-    int prevLogIndex = log.size() - 1;
+    int prev_log_index = log.size() - 1;
 
-    // NOTE(Josh): `prevLogIndex` isn't a part of the formal specification
+    // NOTE(Josh): `prev_log_index` isn't a part of the formal specification
     // I added it because I can't work out how else we work out what
     // a given server has added to its log
     json append_entries_json = {
@@ -519,7 +565,7 @@ std::string Raft_Node::getAppendEntriesResponseMessage(bool success)
             {
                 {"term", this->term},
                 {"success", success},
-                {"prevLogIndex", prevLogIndex}
+                {"prev_log_index", prev_log_index}
             }
         }
     };
