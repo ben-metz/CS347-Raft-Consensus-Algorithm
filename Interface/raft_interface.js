@@ -60,11 +60,12 @@ const wss = new WebSocketServer({
   }
 });
 
-const recvServer = dgram.createSocket('udp4');
+const recvServer = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 const sendServer = dgram.createSocket('udp4');
+const shouldRunManager = !process.argv.find((it) => it === '--no-manager');
 
 const client_ip = '127.0.0.1';
-const client_receive_port = 12345;
+const client_receive_port = 12344;
 const client_send_port = 12346;
 
 recvServer.on('error', (err) => {
@@ -90,10 +91,12 @@ wss.on('connection', function connection(ws) {
     }
     const { value } = validationResult;
     if (value.message_type === 'restart') {
-      console.log("Restarting Raft Servers...")
-      proc.kill();
+      console.log("Restarting Raft Servers...");
+      if (shouldRunManager) {
+        proc.kill();
 
-      proc = spawn("../Raft_Implementation/manager");
+        proc = spawn("../Raft_Implementation/manager");  
+      }
       return;
     }
     sendServer.send(JSON.stringify(value), client_send_port, client_ip);
@@ -109,47 +112,46 @@ recvServer.on('listening', () => {
   console.log(`server listening ${address.address}:${address.port}`);
 });
 
-async function main() {
-  console.log("Building C++ Raft implementation...");
-  const make_proc = spawn("make", {
-    cwd: "../Raft_Implementation/"
-  });
+async function main() {  
+  if (shouldRunManager) {
+    console.log("Building C++ Raft implementation...");
 
-  make_proc.stdout.on('data', (data) => {
-    console.log(`stdout: ${data}`);
-  });
+    const make_proc = spawn("make", {
+      cwd: "../Raft_Implementation/"
+    });
 
-  await new Promise((resolve) => make_proc.on('close', resolve));
+    make_proc.stdout.on('data', (data) => {
+      console.log(`stdout: ${data}`);
+    });
 
-  console.log("Running manager...")
+    await new Promise((resolve) => make_proc.on('close', resolve));
 
-  proc = spawn("../Raft_Implementation/manager");
+    console.log("Running manager...")
 
-  proc.stdout.on('data', (data) => {
-    console.log(`stdout: ${data}`);
-  });
+    proc = spawn("../Raft_Implementation/manager");
 
-  proc.stderr.on('data', (data) => {
-    console.log(`stderr: ${data}`);
-  });
+    proc.stdout.on('data', (data) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    proc.stderr.on('data', (data) => {
+      console.log(`stderr: ${data}`);
+    });
+  }
 
   setTimeout(() => {
+    console.log(`Binding receive server to port ${client_receive_port}...`);
     recvServer.bind({
       address: client_ip,
       port: client_receive_port,
     });
-    
-    // sendServer.bind({
-    //   address: client_ip,
-    //   port: client_send_port,
-    // });
-  }, 5000)
+  }, 2000)
 
   process.on('SIGINT', function() {
     console.log("Caught interrupt signal");
-    proc.kill();
-    // recvServer.disconnect();
-    // sendServer.disconnect();
+    if (shouldRunManager) {
+      proc.kill();
+    }
     wss.close();  
   
     process.exit();
