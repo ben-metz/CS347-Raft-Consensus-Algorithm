@@ -116,6 +116,16 @@ async function main() {
   if (shouldRunManager) {
     console.log("Building C++ Raft implementation...");
 
+    const clean_proc = spawn("make", ["clean"], {
+      cwd: "../Raft_Implementation/"
+    });
+
+    clean_proc.stdout.on('data', (data) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    await new Promise((resolve) => clean_proc.on('close', resolve));
+
     const make_proc = spawn("make", {
       cwd: "../Raft_Implementation/"
     });
