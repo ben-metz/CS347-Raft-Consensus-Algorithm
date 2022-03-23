@@ -2,15 +2,12 @@
 
 #include <string>
 #include <vector>
-#include "json.hpp"
 
 #define LEADER 0
 #define CANDIDATE 1
 #define FOLLOWER 2
 
 #define HEARTBEAT_TIMEOUT 100
-
-using json = nlohmann::json;
 
 class Server;
 
@@ -61,18 +58,7 @@ private:
     void handleGrantRequestVote(int sender_id, bool vote_granted);
     void handleDenyRequestVote(int sender_id, int candidate_id, int last_log_index);
 
-    void handleDataUpdate(json deserialised_json, char* msg);
-
-    void handleAppendEntries(json deserialised_json);
-    void handleAppendEntriesResponse(int sender_id, bool success, int prev_log_index);
-    void handleAppendEntriesRequest(
-        int sender_id,
-        int leader_id,
-        int term,
-        int prev_log_index,
-        int prev_log_term,
-        int leader_commit,
-        std::vector<json> entries);
+    void handleDataUpdate(json deserialised_json);
 
 public:
     Raft_Node(int id, int server_count, Server *server);
