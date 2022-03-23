@@ -124,6 +124,10 @@ async function main() {
       console.log(`stdout: ${data}`);
     });
 
+    make_proc.stderr.on('data', (data) => {
+      console.log(`stderr: ${data}`);
+    });
+
     await new Promise((resolve) => make_proc.on('close', resolve));
 
     console.log("Running manager...")
