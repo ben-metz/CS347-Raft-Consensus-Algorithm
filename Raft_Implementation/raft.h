@@ -2,12 +2,15 @@
 
 #include <string>
 #include <vector>
+#include "json.hpp"
 
 #define LEADER 0
 #define CANDIDATE 1
 #define FOLLOWER 2
 
 #define HEARTBEAT_TIMEOUT 100
+
+using json = nlohmann::json;
 
 class Server;
 
