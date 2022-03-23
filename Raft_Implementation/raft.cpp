@@ -196,7 +196,7 @@ void Raft_Node::handleRequestVote(json deserialised_json)
     }
 }
 
-void Raft_Node::handleDataUpdate(json deserialised_json)
+void Raft_Node::handleDataUpdate(json deserialised_json, char* msg)
 {
     // Apply change to the log if leader
     if (this->state == LEADER)
@@ -381,7 +381,7 @@ void Raft_Node::input_message(char *msg)
     // Handle a data update message
     if (deserialised_json["message_type"] == DATA_UPDATE_MESSAGE)
     {
-        this->handleDataUpdate(deserialised_json);
+        this->handleDataUpdate(deserialised_json, msg);
     }
 }
 
