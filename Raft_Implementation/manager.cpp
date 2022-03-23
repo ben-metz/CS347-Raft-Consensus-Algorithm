@@ -60,6 +60,8 @@ Manager::~Manager()
     this->receive_socket_fd = nullptr;
     free(this->send_socket_fd);
     this->send_socket_fd = nullptr;
+    free(this->send_socket_backup_fd);
+    this->send_socket_backup_fd = nullptr;
 
     free(this->rcv_buffer);
     this->rcv_buffer = nullptr;
@@ -77,6 +79,7 @@ void Manager::init_sockets()
 {
     this->receive_socket_fd = (int *)malloc(sizeof(int));
     this->send_socket_fd = (int *)malloc(sizeof(int));
+    this->send_socket_backup_fd = (int *)malloc(sizeof(int));
 
     // Creating socket file descriptor
     if ((*(this->receive_socket_fd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -91,10 +94,21 @@ void Manager::init_sockets()
         exit(EXIT_FAILURE);
     }
 
+    if ((*(this->send_socket_backup_fd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+        perror("Send socket for Node.js creation failed");
+        exit(EXIT_FAILURE);
+    }
+
     // Filling server information
     this->send_addr.sin_family = AF_INET;
     this->send_addr.sin_port = htons(SEND_PORT);
     this->send_addr.sin_addr.s_addr = INADDR_ANY;
+
+    // Filling server information
+    this->send_addr_backup.sin_family = AF_INET;
+    this->send_addr_backup.sin_port = htons(SEND_PORT_BACKUP);
+    this->send_addr_backup.sin_addr.s_addr = INADDR_ANY;
 
     this->rcv_addr.sin_family = AF_INET;
     this->rcv_addr.sin_port = htons(RCV_PORT);
@@ -224,6 +238,9 @@ void Manager::send_msg(std::string msg)
     sendto(*(this->send_socket_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
            MSG_CONFIRM, (const struct sockaddr *)&(this->send_addr),
            sizeof(this->send_addr));
+    sendto(*(this->send_socket_backup_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
+           MSG_CONFIRM, (const struct sockaddr *)&(this->send_addr_backup),
+           sizeof(this->send_addr_backup));
 }
 
 // Add socket to server_socket_address arrays for all servers except server with passed id

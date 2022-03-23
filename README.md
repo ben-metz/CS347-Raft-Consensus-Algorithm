@@ -39,13 +39,14 @@ Note: These steps have been tested to run on the VNC provided by Warwick DCS.
 
 ### Steps
 1. Navigate to the `Interface` directory.
-2. Run `npm install` to install all dependencies of the project, then run `npm run start` to start the Node.js server.
+2. Run `npm install` to install all dependencies of the project, then run `npm run start` to start the Node.js server. **Note:** If you want to have the Python testing interface running at the same time, add the `--no-manager` argument (`npm run start -- --no-manager`).
 3. In another terminal, navigate to the `raft-web-interface` directory, then perform `npm install` and `npm run start`.
 4. Your browser should open `http://localhost:3000` automatically.
-5. (For WSL2 users)
-   1. Install `net-tools` if it is not present. Then, get the host IP of the WSL2 subsystem with `ifconfig`.
-   2. Add a file called `.env` inside the `raft-web-interface` folder with the following content: ```REACT_APP_WEBSOCKET_URL=ws://<IP from ifconfig>:8001```
-   3. Restart the `raft-web-interface` server
+
+Note for users of WSL2:
+1. Install `net-tools` if it is not present. Then, get the host IP of the WSL2 subsystem with `ifconfig`.
+2. Add a file called `.env` inside the `raft-web-interface` folder with the following content: ```REACT_APP_WEBSOCKET_URL=ws://<IP from ifconfig>:8001```
+3. Restart the `raft-web-interface` server
 
 ## Running Instructions - Python
 

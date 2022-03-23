@@ -14,6 +14,7 @@
 
 #define SERVER_COUNT 5
 #define IP "127.0.0.1"          // Loopback
+#define SEND_PORT_BACKUP 12344  // Port to send details to Node.js
 #define SEND_PORT 12345         // Port to send details to Python
 #define RCV_PORT 12346          // Port to receive things commands Python
 #define SERVER_START_PORT 12347 // Ports for inter-server communication
@@ -30,7 +31,9 @@ private:
     socklen_t *rcv_socklen;
     int *receive_socket_fd;
     int *send_socket_fd;
+    int *send_socket_backup_fd;
     struct sockaddr_in send_addr;
+    struct sockaddr_in send_addr_backup;
     struct sockaddr_in rcv_addr;
     Server **servers;
     std::thread listener;

@@ -1,4 +1,4 @@
-import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, skipWhile, Subject, switchMap, tap, timestamp } from "rxjs";
+import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, Subject, tap, timestamp } from "rxjs";
 import {
   IConnectionStatusServerMessage,
   IConnectionType,
@@ -112,6 +112,14 @@ class RaftClient {
         return IConnectionType.STARTED;
       })
     );
+
+    this.latestMessagesSubject.subscribe((it) => {
+      if (this.isConnectionStatusMessage(it) && it.data === IConnectionType.STARTED) {
+        this.startTime = new Date();
+        this.latestShouldResetSubject.next();
+        this.latestServerStatusSubject.next(RaftClient.initialServerStatus);
+      }
+    })
 
     this.connect();
   }
