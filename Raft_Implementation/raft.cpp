@@ -220,8 +220,6 @@ void Raft_Node::input_message(char *msg)
 
         this -> vote_count = 0;
 
-        this->voted_for_id = -1;
-
         if (this->getState() == CANDIDATE){
             this->setState(FOLLOWER);
         }
