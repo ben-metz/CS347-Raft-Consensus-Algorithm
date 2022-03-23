@@ -54,6 +54,10 @@ private:
 
     Server *server; // Associated server
 
+    void handleRequestVote(json deserialised_json);
+    void handleGrantRequestVote(int sender_id, bool vote_granted);
+    void handleDenyRequestVote(int sender_id, int candidate_id, int last_log_index);
+
 public:
     Raft_Node(int id, int server_count, Server *server);
     ~Raft_Node();
