@@ -16,7 +16,7 @@
 #define IP "127.0.0.1"          // Loopback
 #define SEND_PORT_BACKUP 12344  // Port to send details to Node.js
 #define SEND_PORT 12345         // Port to send details to Python
-#define RCV_PORT 12346          // Port to receive things commands Python
+#define RCV_PORT 12346          // Port to receive commands from Python
 #define SERVER_START_PORT 12347 // Ports for inter-server communication
 
 // (end port = SERVER_START_PORT + SERVER_COUNT)
@@ -26,33 +26,33 @@ class Server;
 class Manager
 {
 private:
-    char *rcv_buffer;
-    int *rcv_n;
-    socklen_t *rcv_socklen;
-    int *receive_socket_fd;
-    int *send_socket_fd;
-    int *send_socket_backup_fd;
-    struct sockaddr_in send_addr;
-    struct sockaddr_in send_addr_backup;
-    struct sockaddr_in rcv_addr;
+    char *rcvBuffer;
+    int *rcvN;
+    socklen_t *rcvSocklen;
+    int *receiveSocketFd;
+    int *sendSocketFd;
+    int *sendSocketBackupFd;
+    struct sockaddr_in sendAddr;
+    struct sockaddr_in sendAddrBackup;
+    struct sockaddr_in rcvAddr;
     Server **servers;
     std::thread listener;
 
-    void init_sockets();
-    void init_servers();
-    void init_listener();
-    void listener_function();
+    void initSockets();
+    void initServers();
+    void initListener();
+    void listenerFunction();
 
-    void handle_message(char *msg, int len);
-    void send_to_all_servers(char *msg, int len);
-    void send_to_server(int id, char *msg, int len);
-    struct server_socket_address *server_addresses;
-    void update_server_value(int *update_properties);
+    void handleMessage(char *msg, int len);
+    void sendToAllServers(char *msg, int len);
+    void sendToServer(int id, char *msg, int len);
+    struct server_socket_address *serverAddresses;
+    void updateServerValue(int *updateProperties);
 
 public:
     Manager();
     ~Manager();
 
-    void send_msg(std::string msg);
+    void sendMsg(std::string msg);
     void addSocket(struct server_socket_address *addr);
 };

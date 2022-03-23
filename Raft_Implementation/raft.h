@@ -80,7 +80,7 @@ public:
     ~Raft_Node();
 
     void run();
-    void input_message(char *msg);
+    void inputMessage(char *msg);
 
     bool checkElectionTimer();
     bool checkHeartbeatTimer();

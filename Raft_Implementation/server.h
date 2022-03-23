@@ -20,7 +20,7 @@ class Raft_Node;
 // Stores server_socket_address server communication details
 struct server_socket_address
 {
-    int server_socket_address_id;
+    int serverSocketAddressId;
     int *fd;
     struct sockaddr_in addr;
 };
@@ -28,42 +28,42 @@ struct server_socket_address
 class Server
 {
 private:
-    void server_function();
+    void serverFunction();
 
-    int server_id;
+    int serverId;
     Manager *manager;
-    char *rcv_buffer;
-    int *rcv_n;
-    socklen_t *rcv_socklen;
+    char *rcvBuffer;
+    int *rcvN;
+    socklen_t *rcvSocklen;
     struct server_socket_address **neighbours;
-    int *server_address_added;
-    int getSocketIndex(int server_id);
+    int *serverAddressAdded;
+    int getSocketIndex(int serverId);
 
-    struct server_socket_address *socket_addr;
+    struct server_socket_address *socketAddr;
     std::thread thread;
     Database *database;
     
     void handleMessage(char *msg);
 
     int stopped;
-    void set_status(int new_status);
+    void setStatus(int newStatus);
 
     Raft_Node *raft;
-    char *raft_response;
+    char *raftResponse;
 public:
     Server();
     ~Server();
 
     int getID();
     void initialise(int id, Manager *manager,
-                    int port, int server_socket_address_count);
+                    int port, int serverSocketAddressCount);
     void initSocket(int port);
     void addSocket(struct server_socket_address *addr);
     void addToNeighbours();
     struct server_socket_address *getSocket();
     void sendToAllServers(std::string msg);
     void sendToServer(int id, std::string msg);
-    void send_details(std::string action);
+    void sendDetails(std::string action);
     int getServerSocketAddress(int server);
 
     inline bool isRunning() { return !stopped; }

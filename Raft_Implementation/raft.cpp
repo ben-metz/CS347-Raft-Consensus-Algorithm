@@ -56,7 +56,7 @@ void Raft_Node::run()
 {
     if (this->state == LEADER && this->checkHeartbeatTimer())
     {
-        this->server->send_details("Sending Heartbeats");
+        this->server->sendDetails("Sending Heartbeats");
 
         // send heartbeats
         for (int serverID = 0; serverID < server_count; serverID++)
@@ -85,7 +85,7 @@ void Raft_Node::run()
     for (int i = lastApplied + 1; i <= commitIndex; i++)
     {
         auto& entry = log[i];
-        this->server->getDatabase()->set_value(entry.index, entry.value);
+        this->server->getDatabase()->setValue(entry.index, entry.value);
         lastApplied += 1;
     }
 }
@@ -128,7 +128,7 @@ void Raft_Node::handleDenyRequestVote(int sender_id, int candidate_id, int last_
         s << "Vote Request from " << sender_id << " granted";
         std::string resp(s.str());
 
-        this->server->send_details(resp);
+        this->server->sendDetails(resp);
 
         // Indicate vote for candidate that sent message
         this->voted_for_id = candidate_id;
@@ -147,7 +147,7 @@ void Raft_Node::handleDenyRequestVote(int sender_id, int candidate_id, int last_
 
     this->server->sendToServer(sender_id, this->getVoteResponseMessage(false));
 
-    this->server->send_details(resp);
+    this->server->sendDetails(resp);
 }
 
 void Raft_Node::handleGrantRequestVote(int sender_id, bool vote_granted)
@@ -156,7 +156,7 @@ void Raft_Node::handleGrantRequestVote(int sender_id, bool vote_granted)
     s << "Vote Response from " << sender_id << ": " << std::boolalpha << vote_granted;
     std::string resp(s.str());
 
-    this->server->send_details(resp);
+    this->server->sendDetails(resp);
 
     // If vote granted, add to count
     if (vote_granted && this -> state == CANDIDATE)
@@ -263,7 +263,7 @@ void Raft_Node::handleAppendEntriesRequest(
     s << "AppendEntry RPC from " << sender_id;
     std::string resp(s.str());
     
-    this->server->send_details(resp);
+    this->server->sendDetails(resp);
 
     // Reset random timeout
     this->resetElectionTimer();
@@ -367,7 +367,7 @@ void Raft_Node::handleAppendEntries(json deserialised_json)
 
 // When a server receives a message, it is fed into this function where
 // it is deserialised and the appropriate action is taken
-void Raft_Node::input_message(char *msg)
+void Raft_Node::inputMessage(char *msg)
 {
     // Reset countdown every time message received (needs to be changed to be only when heartbeat received from leader)
     this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -455,7 +455,7 @@ int Raft_Node::getID()
 // Returns the vote request message
 std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_term)
 {
-    //this->server->send_details("Vote Request Sent");
+    //this->server->sendDetails("Vote Request Sent");
 
     json vote_request_data = {
         {"sender_id", this->candidate_id},
@@ -474,7 +474,7 @@ std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_te
 // Returns a string representation of a response message to send
 std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
 {
-    //this->server->send_details("Sent Vote Response");
+    //this->server->sendDetails("Sent Vote Response");
 
     json vote_request_data = {
         {"sender_id", this->candidate_id},
@@ -494,7 +494,7 @@ std::string Raft_Node::getAppendEntriesMessage(int server)
     int prevLogIndex = nextIndex[server] - 1;
     int prevLogTerm = (prevLogIndex < log.size() && prevLogIndex >= 0) ? log[prevLogIndex].term : 0;
 
-    //this->server->send_details("AppendEntries Sent");
+    //this->server->sendDetails("AppendEntries Sent");
 
     json appendEntriesJson = {
         {"sender_id", this->candidate_id},
@@ -554,15 +554,15 @@ void Raft_Node::setState(int state)
 {
     if (state == 0)
     {
-        this->server->send_details("State change: Leader");
+        this->server->sendDetails("State change: Leader");
     }
     else if (state == 1)
     {
-        this->server->send_details("State change: Candidate");
+        this->server->sendDetails("State change: Candidate");
     }
     else
     {
-        this->server->send_details("State change: Follower");
+        this->server->sendDetails("State change: Follower");
     }
 
     this->state = state;

@@ -5,17 +5,17 @@
 
 Manager *manager;
 
-void signal_callback_handler(int signum) {
+void signalCallbackHandler(int signum) {
    std::cout << "\nCaught Signal: " << signum << "\n";
 
+   // Clean up the allocated manager
    if (manager)
    {
       delete manager;
       manager = nullptr;
    }
 
-   // Not reached for some reason?
-   // Maybe exiting thread is de-allocated before finishing?
+   // Report a successful shut down
    printf("Successfully shut down\n");
 
    // Terminate program
@@ -23,10 +23,13 @@ void signal_callback_handler(int signum) {
 }
 
 int main(){
-   signal(SIGINT, signal_callback_handler);
+   // Register our signal handler
+   signal(SIGINT, signalCallbackHandler);
 
+   // Allocate a new manager object
    manager = new Manager();
 
+   // Wait indefinitely
    while(true);
 }
 

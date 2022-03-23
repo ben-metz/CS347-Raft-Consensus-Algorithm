@@ -9,19 +9,20 @@ std::atomic_bool running_(true);
 Manager::Manager()
     : listener{}
 {
-    this->server_addresses = (struct server_socket_address *)malloc(sizeof(struct server_socket_address) * SERVER_COUNT);
+    this->serverAddresses = (struct server_socket_address *)malloc(sizeof(struct server_socket_address) * SERVER_COUNT);
 
-    this->init_sockets();
+    this->initSockets();
 
-    this->init_listener();
+    this->initListener();
 
-    this->init_servers();
+    this->initServers();
 }
 
 Manager::~Manager()
 {
     running_ = false; // Make threads exit their functions
 
+    // Join the python listener thread if possible
     if (this->listener.joinable() && this->listener.get_id() != std::this_thread::get_id())
         this->listener.join();
     std::cout << "Joined Python Listener Thread\n";
@@ -46,108 +47,108 @@ Manager::~Manager()
     free(this->servers);
     this->servers = nullptr;
 
-    json end_msg = {
+    json endMsg = {
         {"message_type", "connection_status"},
         {"data", "ended"}};
 
-    this->send_msg(end_msg.dump());
+    this->sendMsg(endMsg.dump());
 
     std::cout << "Closing Python Communication Sockets and Freeing Memory...\n";
-    close(*(this->receive_socket_fd));
-    close(*(this->send_socket_fd));
+    close(*(this->receiveSocketFd));
+    close(*(this->sendSocketFd));
 
-    free(this->receive_socket_fd);
-    this->receive_socket_fd = nullptr;
-    free(this->send_socket_fd);
-    this->send_socket_fd = nullptr;
-    free(this->send_socket_backup_fd);
-    this->send_socket_backup_fd = nullptr;
+    free(this->receiveSocketFd);
+    this->receiveSocketFd = nullptr;
+    free(this->sendSocketFd);
+    this->sendSocketFd = nullptr;
+    free(this->sendSocketBackupFd);
+    this->sendSocketBackupFd = nullptr;
 
-    free(this->rcv_buffer);
-    this->rcv_buffer = nullptr;
-    free(this->rcv_n);
-    this->rcv_n = nullptr;
-    free(this->rcv_socklen);
-    this->rcv_socklen = nullptr;
+    free(this->rcvBuffer);
+    this->rcvBuffer = nullptr;
+    free(this->rcvN);
+    this->rcvN = nullptr;
+    free(this->rcvSocklen);
+    this->rcvSocklen = nullptr;
 
-    free(this->server_addresses);
-    this->server_addresses = nullptr;
+    free(this->serverAddresses);
+    this->serverAddresses = nullptr;
 }
 
 // Initialise the Python communication sockets
-void Manager::init_sockets()
+void Manager::initSockets()
 {
-    this->receive_socket_fd = (int *)malloc(sizeof(int));
-    this->send_socket_fd = (int *)malloc(sizeof(int));
-    this->send_socket_backup_fd = (int *)malloc(sizeof(int));
+    this->receiveSocketFd = (int *)malloc(sizeof(int));
+    this->sendSocketFd = (int *)malloc(sizeof(int));
+    this->sendSocketBackupFd = (int *)malloc(sizeof(int));
 
     // Creating socket file descriptor
-    if ((*(this->receive_socket_fd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((*(this->receiveSocketFd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         perror("Receive socket creation failed");
         exit(EXIT_FAILURE);
     }
 
-    if ((*(this->send_socket_fd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((*(this->sendSocketFd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         perror("Send socket creation failed");
         exit(EXIT_FAILURE);
     }
 
-    if ((*(this->send_socket_backup_fd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((*(this->sendSocketBackupFd) = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         perror("Send socket for Node.js creation failed");
         exit(EXIT_FAILURE);
     }
 
     // Filling server information
-    this->send_addr.sin_family = AF_INET;
-    this->send_addr.sin_port = htons(SEND_PORT);
-    this->send_addr.sin_addr.s_addr = INADDR_ANY;
+    this->sendAddr.sin_family = AF_INET;
+    this->sendAddr.sin_port = htons(SEND_PORT);
+    this->sendAddr.sin_addr.s_addr = INADDR_ANY;
 
     // Filling server information
-    this->send_addr_backup.sin_family = AF_INET;
-    this->send_addr_backup.sin_port = htons(SEND_PORT_BACKUP);
-    this->send_addr_backup.sin_addr.s_addr = INADDR_ANY;
+    this->sendAddrBackup.sin_family = AF_INET;
+    this->sendAddrBackup.sin_port = htons(SEND_PORT_BACKUP);
+    this->sendAddrBackup.sin_addr.s_addr = INADDR_ANY;
 
-    this->rcv_addr.sin_family = AF_INET;
-    this->rcv_addr.sin_port = htons(RCV_PORT);
-    this->rcv_addr.sin_addr.s_addr = INADDR_ANY;
+    this->rcvAddr.sin_family = AF_INET;
+    this->rcvAddr.sin_port = htons(RCV_PORT);
+    this->rcvAddr.sin_addr.s_addr = INADDR_ANY;
 
     // Bind the socket with the server address
-    if (bind(*receive_socket_fd,
-             (const struct sockaddr *)&rcv_addr,
-             sizeof(rcv_addr)) < 0)
+    if (bind(*receiveSocketFd,
+             (const struct sockaddr *)&rcvAddr,
+             sizeof(rcvAddr)) < 0)
     {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
 
-    json start_msg = {
+    json startMsg = {
         {"message_type", "connection_status"},
         {"data", "started"}};
 
-    this->send_msg(start_msg.dump());
+    this->sendMsg(startMsg.dump());
 }
 
 // Function that listens to the receive socket
-void Manager::listener_function()
+void Manager::listenerFunction()
 {
-    int flags = fcntl(*receive_socket_fd, F_GETFL);
+    int flags = fcntl(*receiveSocketFd, F_GETFL);
     flags |= O_NONBLOCK;
-    fcntl(*receive_socket_fd, F_SETFL, flags);
+    fcntl(*receiveSocketFd, F_SETFL, flags);
 
     while (running_)
     {
-        *this->rcv_n = recvfrom(*receive_socket_fd, (char *)this->rcv_buffer, 1024,
-                                MSG_WAITALL, (struct sockaddr *)&rcv_addr,
-                                this->rcv_socklen);
+        *this->rcvN = recvfrom(*receiveSocketFd, (char *)this->rcvBuffer, 1024,
+                                MSG_WAITALL, (struct sockaddr *)&rcvAddr,
+                                this->rcvSocklen);
 
-        if (*this->rcv_n != -1)
+        if (*this->rcvN != -1)
         {
-            this->rcv_buffer[*this->rcv_n] = '\0';
+            this->rcvBuffer[*this->rcvN] = '\0';
 
-            this->handle_message(this->rcv_buffer, *this->rcv_n + 1);
+            this->handleMessage(this->rcvBuffer, *this->rcvN + 1);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -155,57 +156,56 @@ void Manager::listener_function()
 }
 
 // Handles messages received from the Python client
-void Manager::handle_message(char *msg, int len)
+void Manager::handleMessage(char *msg, int len)
 {
-    json deserialised_json = json::parse(std::string(msg));
+    json deserialisedJson = json::parse(std::string(msg));
 
-    if (deserialised_json["message_type"] == "data_update")
+    if (deserialisedJson["message_type"] == "data_update")
     {
-        this->send_to_server(deserialised_json["data"]["server_id"].get<int>(), msg, len);
+        this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
     }
-    else if (deserialised_json["message_type"] == "set_server_status")
+    else if (deserialisedJson["message_type"] == "set_server_status")
     {
-        this->send_to_server(deserialised_json["data"]["server_id"].get<int>(), msg, len);
+        this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
     }
-    else if (deserialised_json["message_type"] == "state_injection")
+    else if (deserialisedJson["message_type"] == "state_injection")
     {
-        this->send_to_server(deserialised_json["data"]["server_id"].get<int>(), msg, len);
+        this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
     }
 }
 
 // Sends a message to the server specified by the id
-void Manager::send_to_server(int id, char *msg, int len)
+void Manager::sendToServer(int id, char *msg, int len)
 {
-    sendto(*(this->server_addresses[id].fd), (const char *)msg, len,
-           MSG_CONFIRM, (const struct sockaddr *)&(this->server_addresses[id].addr),
-           sizeof(this->server_addresses[id].addr));
+    sendto(*(this->serverAddresses[id].fd), (const char *)msg, len,
+           MSG_CONFIRM, (const struct sockaddr *)&(this->serverAddresses[id].addr),
+           sizeof(this->serverAddresses[id].addr));
 }
 
 // Sends a message to all servers
-void Manager::send_to_all_servers(char *msg, int len)
+void Manager::sendToAllServers(char *msg, int len)
 {
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        sendto(*(this->server_addresses[i].fd), (const char *)msg, len,
-               MSG_CONFIRM, (const struct sockaddr *)&(this->server_addresses[i].addr),
-               sizeof(this->server_addresses[i].addr));
+        sendto(*(this->serverAddresses[i].fd), (const char *)msg, len,
+               MSG_CONFIRM, (const struct sockaddr *)&(this->serverAddresses[i].addr),
+               sizeof(this->serverAddresses[i].addr));
     }
 }
 
 // Initialise update listener
-void Manager::init_listener()
+void Manager::initListener()
 {
-    this->rcv_buffer = (char *)malloc(sizeof(char) * 1024);
-    this->rcv_n = (int *)malloc(sizeof(int));
-    this->rcv_socklen = (socklen_t *)malloc(sizeof(socklen_t));
-    *this->rcv_socklen = sizeof(this->rcv_addr);
+    this->rcvBuffer = (char *)malloc(sizeof(char) * 1024);
+    this->rcvN = (int *)malloc(sizeof(int));
+    this->rcvSocklen = (socklen_t *)malloc(sizeof(socklen_t));
+    *this->rcvSocklen = sizeof(this->rcvAddr);
 
-    // this->listener = new std::thread(&Manager::listener_function, this);
-    this->listener = std::thread(&Manager::listener_function, this);
+    this->listener = std::thread(&Manager::listenerFunction, this);
 }
 
 // Initialise the servers
-void Manager::init_servers()
+void Manager::initServers()
 {
     this->servers = (Server **)malloc(sizeof(Server*) * SERVER_COUNT);
 
@@ -222,7 +222,7 @@ void Manager::init_servers()
     for (int i = 0; i < SERVER_COUNT; i++)
     {
         this->servers[i]->initialise(i, this, SERVER_START_PORT + i, SERVER_COUNT - 1);
-        this->server_addresses[i] = *this->servers[i]->getSocket();
+        this->serverAddresses[i] = *this->servers[i]->getSocket();
     }
 
     // Share the sockets to all servers
@@ -233,14 +233,14 @@ void Manager::init_servers()
 }
 
 // Sends a message back to the client
-void Manager::send_msg(std::string msg)
+void Manager::sendMsg(std::string msg)
 {  
-    sendto(*(this->send_socket_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
-           MSG_CONFIRM, (const struct sockaddr *)&(this->send_addr),
-           sizeof(this->send_addr));
-    sendto(*(this->send_socket_backup_fd), (const char *)msg.c_str(), strlen(msg.c_str()),
-           MSG_CONFIRM, (const struct sockaddr *)&(this->send_addr_backup),
-           sizeof(this->send_addr_backup));
+    sendto(*(this->sendSocketFd), (const char *)msg.c_str(), strlen(msg.c_str()),
+           MSG_CONFIRM, (const struct sockaddr *)&(this->sendAddr),
+           sizeof(this->sendAddr));
+    sendto(*(this->sendSocketBackupFd), (const char *)msg.c_str(), strlen(msg.c_str()),
+           MSG_CONFIRM, (const struct sockaddr *)&(this->sendAddrBackup),
+           sizeof(this->sendAddrBackup));
 }
 
 // Add socket to server_socket_address arrays for all servers except server with passed id
@@ -248,7 +248,7 @@ void Manager::addSocket(struct server_socket_address *addr)
 {
     for (int i = 0; i < SERVER_COUNT; i++)
     {
-        if (i != addr->server_socket_address_id)
+        if (i != addr->serverSocketAddressId)
         {
             servers[i]->addSocket(addr);
         }
