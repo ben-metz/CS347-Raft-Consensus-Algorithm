@@ -215,36 +215,46 @@ void Raft_Node::handleDataUpdate(json deserialised_json, char* msg)
     }
 }
 
-// When a server receives a message, it is fed into this function where
-// it is deserialised and the appropriate action is taken
-void Raft_Node::input_message(char *msg)
+void Raft_Node::handleAppendEntriesResponse(int sender_id, bool success, int prevLogIndex)
 {
-    // Reset countdown every time message received (needs to be changed to be only when heartbeat received from leader)
-    this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
-    json deserialised_json = json::parse(std::string(msg));
-
-    // If received term > nodes term, then step down
-    if ((deserialised_json["message_type"] != DATA_UPDATE_MESSAGE) && (deserialised_json["data"]["term"].get<int>() > this->term))
+    if (!success)
     {
-        // Update the node term to the term of received message
-        this->term = deserialised_json["data"]["term"].get<int>();
-
-        // Stepped down, so not a follower
-        this->setState(FOLLOWER);
-
-        // Reset voted for indicator
-        this->voted_for_id = -1;
-
-        this -> vote_count = 0;
+        nextIndex[sender_id]--;
+        if (nextIndex[sender_id] < 0)
+            nextIndex[sender_id] = 0;
     }
-
-    // If message is a vote request, respond with a vote response
-    if (deserialised_json["message_type"] == REQUEST_VOTE_MESSAGE)
+    else
     {
-        this->handleRequestVote(deserialised_json);
-    }
+        nextIndex[sender_id] = prevLogIndex + 1;
 
+        // Find the largest index that a majority of servers have replicated
+        int majorityIndex = -1;
+        for (int index = prevLogIndex; index >= 0; index--)
+        {
+            // Count starts at 1 because leader already has it
+            int count = 1;
+            for (int serverID = 0; serverID < server_count; serverID++)
+                if (nextIndex[serverID] > index)
+                    count++;
+            
+            if (count >= server_count / 2.0f)
+            {
+                majorityIndex = index;
+                break;
+            }
+        }
+
+        // Commit changes in order
+        if (commitIndex < majorityIndex)
+        {
+            commitIndex = majorityIndex;
+        }
+    }
+}
+
+
+void Raft_Node::handleAppendEntries(json deserialised_json)
+{
     // If message is an append entry, check if valid
     if ((deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE) &&
         (deserialised_json["response"] == "false"))
@@ -340,42 +350,47 @@ void Raft_Node::input_message(char *msg)
     if ((deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE) &&
         (deserialised_json["response"] == "true"))
     {
-        int sender_id = deserialised_json["sender_id"].get<int>();
+        this->handleAppendEntriesResponse(
+            deserialised_json["sender_id"].get<int>(),
+            deserialised_json["data"]["success"].get<bool>(),
+            deserialised_json["data"]["prevLogIndex"].get<int>()
+        );
+    }
+}
 
-        if (!deserialised_json["data"]["success"].get<bool>())
-        {
-            nextIndex[sender_id]--;
-            if (nextIndex[sender_id] < 0)
-                nextIndex[sender_id] = 0;
-        }
-        else
-        {
-            int prevLogIndex = deserialised_json["data"]["prevLogIndex"].get<int>();
-            nextIndex[sender_id] = prevLogIndex + 1;
+// When a server receives a message, it is fed into this function where
+// it is deserialised and the appropriate action is taken
+void Raft_Node::input_message(char *msg)
+{
+    // Reset countdown every time message received (needs to be changed to be only when heartbeat received from leader)
+    this->time_of_last_message = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-            // Find the largest index that a majority of servers have replicated
-            int majorityIndex = -1;
-            for (int index = prevLogIndex; index >= 0; index--)
-            {
-                // Count starts at 1 because leader already has it
-                int count = 1;
-                for (int serverID = 0; serverID < server_count; serverID++)
-                    if (nextIndex[serverID] > index)
-                        count++;
-                
-                if (count >= server_count / 2.0f)
-                {
-                    majorityIndex = index;
-                    break;
-                }
-            }
+    json deserialised_json = json::parse(std::string(msg));
 
-            // Commit changes in order
-            if (commitIndex < majorityIndex)
-            {
-                commitIndex = majorityIndex;
-            }
-        }
+    // If received term > nodes term, then step down
+    if ((deserialised_json["message_type"] != DATA_UPDATE_MESSAGE) && (deserialised_json["data"]["term"].get<int>() > this->term))
+    {
+        // Update the node term to the term of received message
+        this->term = deserialised_json["data"]["term"].get<int>();
+
+        // Stepped down, so not a follower
+        this->setState(FOLLOWER);
+
+        // Reset voted for indicator
+        this->voted_for_id = -1;
+
+        this -> vote_count = 0;
+    }
+
+    // If message is a vote request, respond with a vote response
+    if (deserialised_json["message_type"] == REQUEST_VOTE_MESSAGE)
+    {
+        this->handleRequestVote(deserialised_json);
+    }
+
+    if (deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE)
+    {
+        this->handleAppendEntries(deserialised_json);
     }
 
     // Handle a data update message

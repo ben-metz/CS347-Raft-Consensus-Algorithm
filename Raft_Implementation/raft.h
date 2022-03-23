@@ -63,6 +63,9 @@ private:
 
     void handleDataUpdate(json deserialised_json, char* msg);
 
+    void handleAppendEntries(json deserialised_json);
+    void handleAppendEntriesResponse(int sender_id, bool success, int prevLogIndex);
+
 public:
     Raft_Node(int id, int server_count, Server *server);
     ~Raft_Node();
