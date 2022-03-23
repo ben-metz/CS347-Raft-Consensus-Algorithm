@@ -47,6 +47,7 @@ Manager::~Manager()
     free(this->servers);
     this->servers = nullptr;
 
+    // Send a message to the server to stop running
     json endMsg = {
         {"message_type", "connection_status"},
         {"data", "ended"}};
@@ -124,6 +125,7 @@ void Manager::initSockets()
         exit(EXIT_FAILURE);
     }
 
+    // Send a message to the server to start running
     json startMsg = {
         {"message_type", "connection_status"},
         {"data", "started"}};
@@ -134,23 +136,27 @@ void Manager::initSockets()
 // Function that listens to the receive socket
 void Manager::listenerFunction()
 {
+    // 
     int flags = fcntl(*receiveSocketFd, F_GETFL);
     flags |= O_NONBLOCK;
     fcntl(*receiveSocketFd, F_SETFL, flags);
 
     while (running_)
     {
+        // Attempt to receive from the socket
         *this->rcvN = recvfrom(*receiveSocketFd, (char *)this->rcvBuffer, 1024,
                                 MSG_WAITALL, (struct sockaddr *)&rcvAddr,
                                 this->rcvSocklen);
 
+        // If data was received
         if (*this->rcvN != -1)
         {
+            // Convert the buffer to a string (char*) and handle the message
             this->rcvBuffer[*this->rcvN] = '\0';
-
             this->handleMessage(this->rcvBuffer, *this->rcvN + 1);
         }
 
+        // Sleep for 100ms
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
@@ -160,18 +166,21 @@ void Manager::handleMessage(char *msg, int len)
 {
     json deserialisedJson = json::parse(std::string(msg));
 
-    if (deserialisedJson["message_type"] == "data_update")
-    {
-        this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
-    }
-    else if (deserialisedJson["message_type"] == "set_server_status")
-    {
-        this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
-    }
-    else if (deserialisedJson["message_type"] == "state_injection")
-    {
-        this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
-    }
+    // Send the received data to the respective server
+    this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
+
+    // if (deserialisedJson["message_type"] == "data_update")
+    // {
+    //     this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
+    // }
+    // else if (deserialisedJson["message_type"] == "set_server_status")
+    // {
+    //     this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
+    // }
+    // else if (deserialisedJson["message_type"] == "state_injection")
+    // {
+    //     this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
+    // }
 }
 
 // Sends a message to the server specified by the id
@@ -234,7 +243,8 @@ void Manager::initServers()
 
 // Sends a message back to the client
 void Manager::sendMsg(std::string msg)
-{  
+{
+    // Send to both the python and node clients
     sendto(*(this->sendSocketFd), (const char *)msg.c_str(), strlen(msg.c_str()),
            MSG_CONFIRM, (const struct sockaddr *)&(this->sendAddr),
            sizeof(this->sendAddr));

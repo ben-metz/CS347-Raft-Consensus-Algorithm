@@ -72,7 +72,8 @@ void Server::initialise(int id, Manager *manager,
     this->thread = std::thread(&Server::serverFunction, this);
 }
 
-std::thread* Server::getThread(){
+std::thread* Server::getThread()
+{
     return &this -> thread;
 }
 
@@ -89,7 +90,7 @@ void Server::serverFunction()
 
     while (running_)
     {
-        // Print received messages to console
+        // Attempt to receive from the socket
         *this->rcvN = recvfrom(*this->socketAddr->fd, (char *)this->rcvBuffer, 1024,
                                 MSG_WAITALL, (struct sockaddr *)&this->socketAddr->addr,
                                 this->rcvSocklen);
@@ -104,7 +105,7 @@ void Server::serverFunction()
             this->handleMessage(rcvBuffer);
         }
         
-        // Check that the raft timer has not expired, if it has then request a vote from all servers
+        // If all servers have been added and the node isn't stopped then run the raft algorithm
         if (*this->serverAddressAdded >= EXPECTED_NEIGHBOURS && !this->stopped)
         {
             this->raft->run();
@@ -248,13 +249,16 @@ void Server::sendToServer(int id, std::string msg)
     if (this -> stopped == 0){
         int sockId = this->getSocketIndex(id);
 
+        // Block until the mutex isn't taken
         while (socketMutex[id].try_lock())
             ;
 
+        // Send the message to the server
         sendto(*(this->neighbours[sockId]->fd), (const char *)msg.c_str(), strlen(msg.c_str()),
             MSG_CONFIRM, (const struct sockaddr *)&(this->neighbours[sockId]->addr),
             sizeof(this->neighbours[sockId]->addr));
 
+        // Release the mutex
         socketMutex[id].unlock();
     }
 }
@@ -262,7 +266,8 @@ void Server::sendToServer(int id, std::string msg)
 // Sends message to all of the servers
 void Server::sendToAllServers(std::string msg)
 {
-    if (this->stopped == 0){
+    if (this->stopped == 0)
+    {
         for (int i = 0; i < EXPECTED_NEIGHBOURS; i++)
         {
             this->sendToServer(this->neighbours[i]->serverSocketAddressId, msg);

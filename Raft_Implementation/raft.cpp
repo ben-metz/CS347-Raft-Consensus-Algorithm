@@ -54,11 +54,13 @@ RaftNode::~RaftNode()
 // an election can begin
 void RaftNode::run()
 {
+    // If this node is the leader and the heartbeat timer has expired
     if (this->state == LEADER && this->checkHeartbeatTimer())
     {
         this->server->sendDetails("Sending Heartbeats");
 
-        // send heartbeats
+        // Send heartbeats to all servers
+        // NOTE: Can't broadcast as each server has a unique AppendEntriesRPC
         for (int serverID = 0; serverID < serverCount; serverID++)
             if (serverID != candidateId)
                 this->server->sendToServer(this->server->getServerSocketAddress(serverID), this->getAppendEntriesMessage(serverID));
@@ -69,7 +71,7 @@ void RaftNode::run()
     {
         this->setState(CANDIDATE);
 
-        this -> term++;
+        this->term++;
 
         this->votedForId = this -> candidateId;
         this->voteCount = 1; // 1 because always votes for self
@@ -158,20 +160,21 @@ void RaftNode::handleGrantRequestVote(int senderId, bool voteGranted)
 
     this->server->sendDetails(resp);
 
-    // If vote granted, add to count
-    if (voteGranted && this -> state == CANDIDATE)
-    {            
+    // If a vote is granted, then add it to the count
+    if (voteGranted && this->state == CANDIDATE)
+    {
+        // If we get a majority vote then become the leader
         if (++this->voteCount > this->serverCount / 2.0f)
         {
             this->setState(LEADER);
 
-            // send out heartbeats to all servers
+            // Send out heartbeats to all servers
             for (int serverID = 0; serverID < serverCount; serverID++)
                 if (serverID != candidateId)
                     this->server->sendToServer(this->server->getServerSocketAddress(serverID), this->getAppendEntriesMessage(serverID));
         
             // Reset leader state
-            // Spec has +1 for below, but they want log to start at 1 instead of 0
+            // Specification has +1 for below, but they want log to start at 1 instead of 0
             for (int i = 0; i < serverCount; i++)
                 this->nextIndex[i] = log.size();
 
@@ -213,6 +216,8 @@ void RaftNode::handleDataUpdate(json deserialisedJson, char* msg)
 
 void RaftNode::handleAppendEntriesResponse(int senderId, bool success, int prevLogIndex)
 {
+    // If the AppendEntriesRPC failed then decrement
+    // the next log entry to send to that server
     if (!success)
     {
         nextIndex[senderId]--;
@@ -221,13 +226,14 @@ void RaftNode::handleAppendEntriesResponse(int senderId, bool success, int prevL
     }
     else
     {
+        // If it succeeded, then update the next index to be the previous log index (+1)
         nextIndex[senderId] = prevLogIndex + 1;
 
         // Find the largest index that a majority of servers have replicated
         int majorityIndex = -1;
         for (int index = prevLogIndex; index >= 0; index--)
         {
-            // Count starts at 1 because leader already has it
+            // Count starts at 1 because leader (this node) already has that entry
             int count = 1;
             for (int serverID = 0; serverID < serverCount; serverID++)
                 if (nextIndex[serverID] > index)
@@ -240,7 +246,8 @@ void RaftNode::handleAppendEntriesResponse(int senderId, bool success, int prevL
             }
         }
 
-        // Commit changes in order
+        // If a majority of servers have replicated a given log
+        // entry then we can commit up to that majority index
         if (commitIndex < majorityIndex)
         {
             commitIndex = majorityIndex;
@@ -268,9 +275,10 @@ void RaftNode::handleAppendEntriesRequest(
     // Reset random timeout
     this->resetElectionTimer();
 
-    this -> voteCount = 0;
+    this->voteCount = 0;
 
-    if (this->getState() == CANDIDATE){
+    if (this->getState() == CANDIDATE)
+    {
         this->setState(FOLLOWER);
     }
 
@@ -306,7 +314,7 @@ void RaftNode::handleAppendEntriesRequest(
     // follow it (§5.3)
     for (int i = 0; i < newEntriesStart - 1; i++)
     {
-        int index = prevLogIndex + i; // + 1?
+        int index = prevLogIndex + i;
         // Existing index with conflicting term
         if (log[index].term != entries[i]["term"].get<int>())
         {
@@ -334,7 +342,6 @@ void RaftNode::handleAppendEntriesRequest(
     // min(leaderCommit, index of last new entry)
     if (leaderCommit > this->commitIndex)
     {
-        // Minimum of the two
         this->commitIndex = (leaderCommit < log.size()) ? leaderCommit : log.size();
     }
 
@@ -530,8 +537,8 @@ std::string RaftNode::getAppendEntriesResponseMessage(bool success)
 {
     int prevLogIndex = log.size() - 1;
 
-    // NOTE(Josh): `prevLogIndex` isn't a part of the formal specification
-    // I added it because I can't work out how else we work out what
+    // NOTE: `prevLogIndex` isn't a part of the formal specification
+    // it was added because can't work out how else we find out what
     // a given server has added to its log
     json appendEntriesJson = {
         {"sender_id", this->candidateId},
