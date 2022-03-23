@@ -49,18 +49,19 @@ const ServerGrid: FC<IServerGridProps> = ({
       {
         field: "term",
         valueGetter: (it) => it.data.data.term,
-        width: 68,
+        width: 75,
         resizable: true,
       },
       {
         field: "vote",
         valueGetter: (it) => it.data.data.vote,
-        width: 68,
+        width: 75,
         resizable: true,
       },
       {
         field: "action",
         valueGetter: (it) => it.data.data.action,
+        width: 250,
         resizable: true,
       },
       {
