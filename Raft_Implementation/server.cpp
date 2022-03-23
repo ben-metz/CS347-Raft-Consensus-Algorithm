@@ -61,7 +61,7 @@ void Server::initialise(int id, Manager *manager,
     this->socketAddr = (struct server_socket_address *)malloc(sizeof(struct server_socket_address));
     this->neighbours = (struct server_socket_address **)malloc(sizeof(struct server_socket_address *) * server_socket_address_count);
 
-    this->raft = new Raft_Node(id, SERVER_COUNT, this);
+    this->raft = new RaftNode(id, SERVER_COUNT, this);
 
     this->raftResponse = (char *)malloc(sizeof(char) * 250);
 

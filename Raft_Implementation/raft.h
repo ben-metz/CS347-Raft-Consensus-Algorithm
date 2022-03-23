@@ -14,7 +14,7 @@ using json = nlohmann::json;
 
 class Server;
 
-class Raft_Node
+class RaftNode
 {
 private:
     int state;
@@ -39,45 +39,45 @@ private:
     // entry known to be replicated on that server
     int* matchIndex;
 
-    int election_timeout;
-    int heartbeat_timeout;
+    int electionTimeout;
+    int heartbeatTimeout;
 
-    long time_of_last_message;
-    long time_of_last_heartbeat;
+    long timeOfLastMessage;
+    long timeOfLastHeartbeat;
 
-    int server_count;
+    int serverCount;
 
     int term;
-    int candidate_id;
-    int leader_id;
+    int candidateId;
+    int leaderId;
 
     // Leader election stuff
-    int voted_for_id;
-    int vote_count;
+    int votedForId;
+    int voteCount;
 
     Server *server; // Associated server
 
-    void handleRequestVote(json deserialised_json);
-    void handleGrantRequestVote(int sender_id, bool vote_granted);
-    void handleDenyRequestVote(int sender_id, int candidate_id, int last_log_index);
+    void handleRequestVote(json deserialisedJson);
+    void handleGrantRequestVote(int senderId, bool voteGranted);
+    void handleDenyRequestVote(int senderId, int candidateId, int lastLogIndex);
 
-    void handleDataUpdate(json deserialised_json, char* msg);
+    void handleDataUpdate(json deserialisedJson, char* msg);
 
-    void handleAppendEntries(json deserialised_json);
+    void handleAppendEntries(json deserialisedJson);
     void handleAppendEntriesRequest(
-        int sender_id,
-        int leader_id,
+        int senderId,
+        int leaderId,
         int term,
         int prevLogIndex,
         int prevLogTerm,
         int leaderCommit,
         std::vector<json> entries
     );
-    void handleAppendEntriesResponse(int sender_id, bool success, int prevLogIndex);
+    void handleAppendEntriesResponse(int senderId, bool success, int prevLogIndex);
 
 public:
-    Raft_Node(int id, int server_count, Server *server);
-    ~Raft_Node();
+    RaftNode(int id, int serverCount, Server *server);
+    ~RaftNode();
 
     void run();
     void inputMessage(char *msg);
@@ -87,7 +87,7 @@ public:
 
     int getElectionTimeout();
 
-    std::string getVoteRequestMessage(int last_log_index = -1, int last_log_term = -1);
+    std::string getVoteRequestMessage(int lastLogIndex, int lastLogTerm);
     std::string getVoteResponseMessage(bool voteGranted);
 
     std::string getAppendEntriesMessage(int server);

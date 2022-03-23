@@ -15,7 +15,7 @@ class Database;
 
 class Manager;
 
-class Raft_Node;
+class RaftNode;
 
 // Stores server_socket_address server communication details
 struct server_socket_address
@@ -48,7 +48,7 @@ private:
     int stopped;
     void setStatus(int newStatus);
 
-    Raft_Node *raft;
+    RaftNode *raft;
     char *raftResponse;
 public:
     Server();
