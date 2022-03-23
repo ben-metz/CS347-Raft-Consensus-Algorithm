@@ -168,19 +168,6 @@ void Manager::handleMessage(char *msg, int len)
 
     // Send the received data to the respective server
     this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
-
-    // if (deserialisedJson["message_type"] == "data_update")
-    // {
-    //     this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
-    // }
-    // else if (deserialisedJson["message_type"] == "set_server_status")
-    // {
-    //     this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
-    // }
-    // else if (deserialisedJson["message_type"] == "state_injection")
-    // {
-    //     this->sendToServer(deserialisedJson["data"]["server_id"].get<int>(), msg, len);
-    // }
 }
 
 // Sends a message to the server specified by the id
