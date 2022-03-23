@@ -3,6 +3,7 @@
 #include <chrono>
 #include "server.h"
 #include "database.h"
+#include <string>
 
 #define DATA_UPDATE_MESSAGE "data_update"
 #define REQUEST_VOTE_MESSAGE "request_vote"
@@ -152,7 +153,7 @@ void Raft_Node::handleDenyRequestVote(int sender_id, int candidate_id, int last_
 void Raft_Node::handleGrantRequestVote(int sender_id, bool vote_granted)
 {
     std::ostringstream s;
-    s << "Vote Response from " << sender_id << ": " << vote_granted;
+    s << "Vote Response from " << sender_id << ": " << std::boolalpha << vote_granted;
     std::string resp(s.str());
 
     this->server->send_details(resp);
@@ -182,12 +183,7 @@ void Raft_Node::handleGrantRequestVote(int sender_id, bool vote_granted)
 
 void Raft_Node::handleRequestVote(json deserialised_json)
 {
-    bool response = false;
-
-    if (deserialised_json["response"] == "true")
-    {
-        response = true;
-    }
+    bool response = deserialised_json["response"].get<bool>();
 
     if (response) {
         this->handleGrantRequestVote(deserialised_json["sender_id"].get<int>(), deserialised_json["data"]["vote_granted"].get<bool>());
@@ -347,9 +343,15 @@ void Raft_Node::handleAppendEntriesRequest(
 
 void Raft_Node::handleAppendEntries(json deserialised_json)
 {
-    // If message is an append entry, check if valid
-    if ((deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE) &&
-        (deserialised_json["response"] == "false"))
+    if (deserialised_json["response"])
+    {
+        this->handleAppendEntriesResponse(
+            deserialised_json["sender_id"].get<int>(),
+            deserialised_json["data"]["success"].get<bool>(),
+            deserialised_json["data"]["prevLogIndex"].get<int>()
+        );
+    }
+    else
     {
         this->handleAppendEntriesRequest(
             deserialised_json["sender_id"].get<int>(),
@@ -359,102 +361,6 @@ void Raft_Node::handleAppendEntries(json deserialised_json)
             deserialised_json["data"]["prevLogTerm"].get<int>(),
             deserialised_json["data"]["leaderCommit"].get<int>(),
             deserialised_json["data"]["entries"]
-        );
-
-        std::ostringstream s;
-        s << "AppendEntry RPC from " << deserialised_json["sender_id"];
-        std::string resp(s.str());
-        
-        this->server->send_details(resp);
-
-        int sender_id = deserialised_json["sender_id"].get<int>();
-
-        // Reset random timeout
-        this->resetElectionTimer();
-
-        this -> vote_count = 0;
-
-        if (this->getState() == CANDIDATE){
-            this->setState(FOLLOWER);
-        }
-
-        // Update the leader ID to allow for data forwarding
-        leader_id = deserialised_json["data"]["leaderId"].get<int>();
-
-        // Receiver rule 1
-        // Reply false if term < currentTerm (§5.1)
-        if (deserialised_json["data"]["term"].get<int>() < term)
-        {
-            this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
-            return;
-        }
-
-        // Receiver rule 2
-        // Reply false if log doesn’t contain an entry at prevLogIndex
-        // whose term matches prevLogTerm (§5.3)
-        int prevLogIndex = deserialised_json["data"]["prevLogIndex"].get<int>();
-        int prevLogTerm = deserialised_json["data"]["prevLogTerm"].get<int>();
-        // if it doesn't have an entry, or if it has an entry and it doesn't match
-        if (prevLogIndex >= 0 && (prevLogIndex > log.size() || log[prevLogIndex].term != prevLogTerm))
-        {
-            this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(false));
-            return;
-        }
-
-        int sentEntriesSize = deserialised_json["data"]["entries"].size();
-        int totalEntries = prevLogIndex + sentEntriesSize;
-        int newEntries = totalEntries - (log.size() - 1);
-        int newEntriesStart = sentEntriesSize - newEntries;
-
-        // Receiver rule 3
-        // If an existing entry conflicts with a new one (same index
-        // but different terms), delete the existing entry and all that
-        // follow it (§5.3)
-        for (int i = 0; i < newEntriesStart - 1; i++)
-        {
-            int index = prevLogIndex + i; // + 1?
-            // Existing index with conflicting term
-            if (log[index].term != deserialised_json["data"]["entries"][i]["term"].get<int>())
-            {
-                for (int j = index; j < log.size(); j++)
-                {
-                    log.pop_back();
-                }
-                break;
-            }
-        }
-
-        // Receiver rule 4
-        // Append any new entries not already in the log
-        for (int i = newEntriesStart; i < sentEntriesSize; i++)
-        {
-            LogEntry entry;
-            entry.term = deserialised_json["data"]["entries"][i]["term"].get<int>();
-            entry.index = deserialised_json["data"]["entries"][i]["index"].get<int>();
-            entry.value = deserialised_json["data"]["entries"][i]["value"].get<int>();
-            log.push_back(entry);
-        }
-
-        // Receiver rule 5
-        // If leaderCommit > commitIndex, set commitIndex =
-        // min(leaderCommit, index of last new entry)
-        int leaderCommit = deserialised_json["data"]["leaderCommit"].get<int>();
-        if (leaderCommit > commitIndex)
-        {
-            // Minimum of the two
-            commitIndex = (leaderCommit < log.size()) ? leaderCommit : log.size();
-        }
-
-        this->server->sendToServer(sender_id, this->getAppendEntriesResponseMessage(true));
-    }
-
-    if ((deserialised_json["message_type"] == APPEND_ENTRIES_MESSAGE) &&
-        (deserialised_json["response"] == "true"))
-    {
-        this->handleAppendEntriesResponse(
-            deserialised_json["sender_id"].get<int>(),
-            deserialised_json["data"]["success"].get<bool>(),
-            deserialised_json["data"]["prevLogIndex"].get<int>()
         );
     }
 }
@@ -554,7 +460,7 @@ std::string Raft_Node::getVoteRequestMessage(int last_log_index, int last_log_te
     json vote_request_data = {
         {"sender_id", this->candidate_id},
         {"message_type", REQUEST_VOTE_MESSAGE},
-        {"response", "false"},
+        {"response", false},
         {"data", {
                      {"term", this->term},                 // candidate's term
                      {"candidate_id", this->candidate_id}, // candidate requesting vote
@@ -573,7 +479,7 @@ std::string Raft_Node::getVoteResponseMessage(bool voteGranted)
     json vote_request_data = {
         {"sender_id", this->candidate_id},
         {"message_type", REQUEST_VOTE_MESSAGE},
-        {"response", "true"},
+        {"response", true},
         {"data", {
                      {"term", this->term},         // candidate's term
                      {"vote_granted", voteGranted} // candidate requesting vote
@@ -593,7 +499,7 @@ std::string Raft_Node::getAppendEntriesMessage(int server)
     json appendEntriesJson = {
         {"sender_id", this->candidate_id},
         {"message_type", APPEND_ENTRIES_MESSAGE},
-        {"response", "false"},
+        {"response", false},
         {"data",
             {
                 {"term", this->term},
@@ -630,7 +536,7 @@ std::string Raft_Node::getAppendEntriesResponseMessage(bool success)
     json append_entries_json = {
         {"sender_id", this->candidate_id},
         {"message_type", APPEND_ENTRIES_MESSAGE},
-        {"response", "true"},
+        {"response", true},
         {"data",
             {
                 {"term", this->term},
