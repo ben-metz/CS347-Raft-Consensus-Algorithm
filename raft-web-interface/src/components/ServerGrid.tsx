@@ -1,10 +1,9 @@
-import { AgGridReact } from 'ag-grid-react';
-import { FC, useEffect, useState } from 'react';
+import { FC, memo, useEffect, useRef } from 'react';
 
 import 'ag-grid-community/dist/styles/ag-grid.css';
 import 'ag-grid-community/dist/styles/ag-theme-alpine.css';
 import { IServerState } from 'customTypes/server';
-import { ColDef, GridApi } from 'ag-grid-community';
+import { ColDef, GridApi, GridReadyEvent, Grid } from 'ag-grid-community';
 import { raftClient } from 'libs/RaftClient';
 import { distinctUntilChanged, filter, tap } from 'rxjs';
 import { useCallback } from 'react';
@@ -25,66 +24,88 @@ export interface IServerGridProps {
   setAgGridApi: (api: GridApi) => void;
 }
 
+const columnDefs: ColDef[] = [
+  {
+    field: "time",
+    valueGetter: (it) => it.data.time,
+    valueFormatter: (value) => value.value.toFixed(2),
+    width: 96,
+    resizable: true,
+  },
+  {
+    field: "state",
+    valueGetter: (it) => parseState(it.data.data.state),
+    width: 110,
+    resizable: true,
+    filter: 'agTextColumnFilter',
+  },
+  {
+    field: "term",
+    valueGetter: (it) => it.data.data.term,
+    width: 90,
+    resizable: true,
+    filter: 'agNumberColumnFilter',
+  },
+  {
+    field: "vote",
+    valueGetter: (it) => it.data.data.vote,
+    width: 90,
+    resizable: true,
+    filter: 'agNumberColumnFilter',
+  },
+  {
+    field: "action",
+    valueGetter: (it) => it.data.data.action,
+    width: 250,
+    resizable: true,
+    filter: 'agTextColumnFilter',
+  },
+  {
+    field: "array",
+    valueGetter: (it) => it.data.data.database,
+    width: 120,
+    resizable: true,
+  },
+  {
+    field: "commit",
+    valueGetter: (it) => it.data.data.lastCommited,
+    width: 110,
+    resizable: true,
+    filter: 'agNumberColumnFilter',
+  },
+];
+
 const ServerGrid: FC<IServerGridProps> = ({
   serverId,
   showDuplicated,
   agGridApi,
   setAgGridApi,
 }) => {
-  const [columnDefs] = useState<ColDef[]>([
-      {
-        field: "time",
-        valueGetter: (it) => it.data.time,
-        valueFormatter: (value) => value.value.toFixed(2),
-        sort: 'desc',
-        width: 96,
-        resizable: true,
-      },
-      {
-        field: "state",
-        valueGetter: (it) => parseState(it.data.data.state),
-        width: 100,
-        resizable: true,
-      },
-      {
-        field: "term",
-        valueGetter: (it) => it.data.data.term,
-        width: 75,
-        resizable: true,
-      },
-      {
-        field: "vote",
-        valueGetter: (it) => it.data.data.vote,
-        width: 75,
-        resizable: true,
-      },
-      {
-        field: "action",
-        valueGetter: (it) => it.data.data.action,
-        width: 250,
-        resizable: true,
-      },
-      {
-        field: "array",
-        valueGetter: (it) => it.data.data.database,
-        width: 120,
-        resizable: true,
-      },
-      {
-        field: "commit",
-        valueGetter: (it) => it.data.data.lastCommited,
-        width: 100,
-        resizable: true,
-      },
-  ]);
-
+  const gridContainerRef = useRef<HTMLDivElement>();
   const resetAll = useCallback(() => {
     if (!agGridApi) {
       return;
     }
     agGridApi.flushAsyncTransactions();
     agGridApi.setRowData([]);
-  }, [agGridApi])
+  }, [agGridApi]);
+
+  const onGridReady = useCallback(({ api }: GridReadyEvent) => {
+    setAgGridApi(api);
+  }, [setAgGridApi]);
+
+  useEffect(() => {
+    if (!gridContainerRef.current || Boolean(agGridApi)) {
+      return;
+    }
+    // Use non-framework version of AG Grid since it is more performant
+    new Grid(gridContainerRef.current, {
+      headerHeight: 36,
+      rowHeight: 36,
+      onGridReady,
+      columnDefs,
+    });
+  }, [onGridReady, agGridApi]);
 
   useEffect(() => {
     if (!agGridApi) return;
@@ -105,8 +126,9 @@ const ServerGrid: FC<IServerGridProps> = ({
           }) : tap(),
     ).subscribe((update) => {
       agGridApi.applyTransactionAsync({
-        add: [update]
-      })
+        add: [update],
+        addIndex: 0,
+      });
     });
     const resetSubscription = raftClient.latestShouldReset.subscribe(() => {
       resetAll();
@@ -119,20 +141,9 @@ const ServerGrid: FC<IServerGridProps> = ({
 
   return (
       <div className="ag-theme-alpine" style={{height: 360, width: '100%'}}>
-        <AgGridReact
-          columnDefs={columnDefs}
-          rowData={[]}
-          onGridReady={({ api }) => {
-            setAgGridApi(api)
-          }}
-          gridOptions={{
-            headerHeight: 36,
-            rowHeight: 36,
-          }}
-        >
-        </AgGridReact>
+        <div id="grid" ref={gridContainerRef as any} style={{ height: 360 }} />
       </div>
   );
 };
 
-export default ServerGrid;
+export default memo(ServerGrid);

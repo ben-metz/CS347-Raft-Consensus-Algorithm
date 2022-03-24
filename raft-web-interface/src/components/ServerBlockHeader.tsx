@@ -1,7 +1,7 @@
 import { IServerState } from "customTypes/server";
 import { raftClient } from "libs/RaftClient";
 import { useObservableState } from "observable-hooks";
-import { FC } from "react";
+import { FC, memo } from "react";
 import { distinctUntilChanged, filter, map } from "rxjs";
 import DuplicatedMessagesButton from "./DuplicatedMessagesButton";
 import GridClearButton from "./GridClearButton";
@@ -14,16 +14,17 @@ interface IServerBlockHeaderProps {
   onGridClear: () => void;
 }
 
-const ServerCurrentTimeNumber: FC<{ serverId: number }> = ({ serverId }) => {
+const ServerCurrentTimeNumber: FC<{ serverId: number }> = memo(({ serverId }) => {
   const [currentTime] = useObservableState(() => raftClient.latestDetailsUpdateMessages.pipe(
     filter((it) => it.data.id === serverId),
     map((it) => it.time),
+    map((it) => it.toFixed(2))
   ))
 
   return (
-    <span>{currentTime?.toFixed(2)}</span>
+    <span>{currentTime}</span>
   )
-}
+})
 
 const ServerCurrentTime: FC<{ serverId: number }> = ({ serverId }) => {
   return (

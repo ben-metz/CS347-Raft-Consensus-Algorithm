@@ -10,7 +10,6 @@ import ReactFlow, {
 import useVisualizationElements from './useVisualizationElements';
 
 const onLoad: OnLoadFunc = (reactFlowInstance) => {
-  console.log('flow loaded:', reactFlowInstance);
   reactFlowInstance.fitView();
 };
 
